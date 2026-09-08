@@ -1,0 +1,462 @@
+
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8"></meta>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"></meta>
+    <title>Yugirdle - O Desafio Diário</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Teko:wght@500&display=swap');
+
+        :root {
+            --bg-dark: #121212; --panel-bg: #1e1e1e;
+            --green: #2ecc71; --red: #e74c3c; --gold: #f1c40f;
+            --text-light: #ffffff; --border: #333;
+        }
+
+        body {
+            margin: 0; background-color: var(--bg-dark); color: var(--text-light);
+            font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; align-items: center;
+        }
+
+        /* HEADER & STREAK */
+        header { width: 100%; max-width: 800px; padding: 15px; text-align: center; border-bottom: 1px solid var(--border); position: relative; box-sizing: border-box; }
+        h1 { margin: 0; font-family: 'Teko', sans-serif; font-size: 36px; letter-spacing: 2px; color: var(--gold); }
+        .streak-box { position: absolute; top: 20px; right: 20px; font-weight: bold; font-size: 18px; color: #ff9f43; display: flex; align-items: center; gap: 5px; }
+
+        /* ÁREA DE INPUT */
+        .input-area { width: 100%; max-width: 600px; padding: 20px; box-sizing: border-box; display: flex; gap: 10px; }
+        input { flex-grow: 1; padding: 12px; border-radius: 5px; border: 1px solid #555; background: #222; color: #fff; font-size: 16px; font-weight: bold; }
+        button { padding: 12px 20px; background: var(--gold); color: #000; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer; text-transform: uppercase; }
+        button:hover { background: #d4af37; }
+        button:disabled { background: #555; color: #888; cursor: not-allowed; }
+
+        /* GRID DO JOGO */
+        .grid-container { width: 100%; max-width: 800px; padding: 10px; box-sizing: border-box; overflow-x: auto; }
+        .grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; gap: 5px; min-width: 600px; margin-bottom: 10px; }
+        .grid-header { font-size: 12px; color: #aaa; text-align: center; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        .cell { background: var(--panel-bg); border: 2px solid var(--border); border-radius: 5px; padding: 10px 5px; text-align: center; font-weight: bold; display: flex; justify-content: center; align-items: center; font-size: 14px; min-height: 40px; }
+        
+        .correct { background-color: var(--green); border-color: #27ae60; }
+        .wrong { background-color: var(--red); border-color: #c0392b; }
+
+        /* MODAL DE RESULTADO (FIM DE JOGO) */
+        #result-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); justify-content: center; align-items: center; z-index: 100; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        .modal-content { background: var(--panel-bg); padding: 30px; border-radius: 10px; border: 2px solid var(--gold); text-align: center; max-width: 400px; width: 100%; }
+        .card-image { width: 100%; max-width: 250px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.8); margin: 15px 0; object-fit: contain; }
+        #share-btn { background: #2980b9; color: #fff; width: 100%; margin-top: 15px; }
+        
+        ::-webkit-scrollbar { height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>YUGIRDLE</h1>
+        <div class="streak-box">🔥 <span id="streak-count">0</span></div>
+    </header>
+
+    <div class="input-area">
+        <input autocomplete="off" id="guess-input" list="card-list" placeholder="Digite o nome da Carta..." type="text" />
+        <datalist id="card-list"></datalist>
+        <button id="guess-btn" onclick="fazerPalpite()">Tentar</button>
+    </div>
+
+    <p style="color: #aaaaaa; font-size: 14px; margin: 0; text-align: center;">Tentativas: <span id="attempt-count">0</span>/6</p>
+
+    <div class="grid-container">
+        <div class="grid grid-header">
+            <div>CARTA</div><div>ATRIBUTO</div><div>TIPO</div><div>NÍVEL</div><div>ATK</div><div>DEF</div>
+        </div>
+        <div id="guesses-grid"></div>
+    </div>
+
+    <!-- MODAL DE FIM DE JOGO -->
+    <div id="result-modal">
+        <div class="modal-content">
+            <h2 id="modal-title" style="margin-top: 0;">FIM DE JOGO</h2>
+            <p id="modal-desc">A carta de hoje era:</p>
+            <img alt="Carta do Dia" class="card-image" id="modal-image" src="" />
+            <p id="modal-card-name" style="color: var(--gold); font-size: 20px; font-weight: bold;"></p>
+            <button id="share-btn" onclick="copiarResultado()">📋 Copiar Resultado para Whatsapp</button>
+            <p style="color: #aaaaaa; font-size: 12px; margin-top: 15px;">A próxima carta será liberada à meia-noite!</p>
+            <button onclick="document.getElementById('result-modal').style.display='none'" style="background: #444; color: white; font-size: 12px; margin-top: 10px; padding: 8px 15px;">Fechar</button>
+        </div>
+    </div>
+
+<script>
+    // --- 1. BANCO DE DADOS (SEU REPOSITÓRIO DE IMAGENS) ---
+    const DB_CARTAS = [
+        { nome: "Ash Blossom & Joyous Springs", atributo: "Fire", tipo: "Zombie", nivel: 3, atk: 0, def: 1800, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhMB1y4y5iHs4vhhPFjjGJLyqvXeI-FA-P88CB9IkuyqpITTXi3N0SiqzlCW4XK4KDT2Agg17QJkorGP_UzltUIwcfGBcXBU6klP-IHSEmIcoU3SqMiE0bAZ1ENUrvAP4E1RsV9y8bmgPVkC-9MMIYeBD5Cel4NDsVmxaEV9k-KB533HG_DtwzqaSWyMyOj/s320/1000112550.jpg" },
+        { nome: "Effect Veiler", atributo: "Light", tipo: "Spellcaster", nivel: 1, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjNNAe1l72eGBpTmPk79V84cg0q5nAovmLsnApwSSN3nx6ASJNl53LnweeKhxuuUzeR-NJIlm11vXNrFVwI2eOUrnYTOV1GtRFoXFOteupqgJe5MOI9sZphlvNCop_V9kCbbJ015GiXXSFQChxS_xAfbFsIYKonI837LI5Vvtn4RGah0weoMQmFauEvaGmB/s320/1000112553.jpg" },
+        { nome: "Nibiru, The Primal Being", atributo: "Light", tipo: "Rock", nivel: 11, atk: 3000, def: 600, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjD7WVnllsTJJev4ZU7VZfNl3YUOKm7rmB3l5FJBeJa2eEiO-5_D-4IJ8eaWIvuZHAHgwyJNH0GyPtimVa7I5v0dHFDbnpmlQIImCi_Fm8OrmGuxju2yQUmEWjq_ivhrUy97JJ_iymXbfZff-5aaQnrETFzN_7CMmm9xW_z-XZ9dOSiCmJkmJ7Rb09y6aU-/s320/1000112554.jpg" },
+        { nome: "Droll & Lock Bird", atributo: "Wind", tipo: "Spellcaster", nivel: 1, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgFSjMIKUuydPsOWMbZKQKaFbjTx5MLI-vq-hjXHGwzmIQ5cNeOMxEXbC_c-Vf1JAjVLQURuv8JetiT9MuV7mw_O8XkKN25IO6SHFw454cAe0u4IeDxvTpJ6BZhKcItl4dTYd_Noa7Lr-L0TF4l8Ntfhj4IWWZyZfTmpGDn3ziR_9ioHzQbel2_T5-5s5I4/s320/1000112555.jpg" },
+        { nome: "Mulcharmy Fuwalos", atributo: "Wind", tipo: "Winged Beast", nivel: 4, atk: 100, def: 600, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiWZdw-29M0XXAtyad8aDN7NHftt8_MUprZ_KSTK4p-WRTCZ34JmdFWhH4-Vb_xZX3dxfZ47JndRSkUrfOor0UnwtOA38RStGzw93IxmckAs4pOYkfQGiCwZ7fZ4qjIW0iCRDIIBTEZODKxxv8qL6iQpK60zflMOjH6vrnIuIsm8wQ_tHp09sRNQuY_drjs/s320/1000112556.jpg" },
+        { nome: "Divine Arsenal AA-ZEUS - Sky Thunder", atributo: "Light", tipo: "Machine", nivel: 12, atk: 3000, def: 3000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgTmXFQZ-H19JzmOnWNGfD0d78cYZKi6v_FVSLiFEju-NzR04ktHKV0Y56yXuSKyL5DmVqPeoE2x2H3mBAzTK5pTDo_XDXHs0KtcQ1mqHkymM21FyBNRJZogZVt2P2t_wAevbzxDEXrh5P4SdrEjlLPOp0Kxaw0iU9GrHRvYxx0xCdEJ0jfHMukMGNsnNjI/s320/1000112562.jpg" },
+        { nome: "S:P Little Knight", atributo: "Dark", tipo: "Warrior", nivel: 2, atk: 1600, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgvTdQ5J5WPfNklAODbyDTdQmCQ51c9fPlCr_GcUFdh0a4tHsmGsikGGoxWVbHfSB2hpVhteyQPz75SlSYSQHN1xOqmJtLne_NQIfXgTHAcB4N97AteC7v2e5QxIrgRn5Tzks-_Z7Tbo4ry6EOCez1QkhKaI68IwafuFvxK9sZpaBBs2PiF6MbNEah6OGtT/s320/1000112563.jpg" },
+        { nome: "Ghost Ogre & Snow Rabbit", atributo: "Light", tipo: "Psychic", nivel: 3, atk: 0, def: 1800, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjut-sjHPNZNY7xZg6S3IOvY7yJ_J5fEzwhl7TdO8D6rq5bmmED63vaFGQpUjDrI8yxsU7SbpQa7aqUgswX0PD2A2zjKJwQ2KYNkRK1KBX1MQ5a2EAeSXwCANv_wRbH1Z15ic6aCWh0Y9xoynrimpeHmLX26BWDEVcXVdmkoCl30gGr08Y0S5NyxtZzfYV6/s320/1000112566.jpg" },
+        { nome: "Knightmare Fenix", atributo: "Fire", tipo: "Fiend", nivel: 2, atk: 1900, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgMziTNZyZG8mjWDku1CDiqguqCNSy83tqWwX959lOPyOCG0ZOWl7Od4g13yCNwbyTWJH-CIzr3O_fs4CY9hJXg181Y-m6a9geVO4DpKYBORsRJi67bIrT4OgoTxev_5IRDUZNyQeJ7MM4dB7f6rHjrYs0UEamRfD5xvCzerMDqqZdiRMA53RV-Cg-Y9EEf/s320/1000112567.jpg" },
+        { nome: "Accescode Talker", atributo: "Dark", tipo: "Cyberse", nivel: 4, atk: 2300, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhUAEF5FG4v-rE-gLOgLwzqlh5XnFy0yGAxnXM9Dgfz2sD5up7tC2MbO8Li6RFKlaNaTuWHUX0u7OHTYQrfkIb-TroLHqMIxZEmqsXQluti4iZmEnit50Jbf-vE3dfZpXpGmD3zPgvY8ASK1-JeFnNQWtox73I6Vj0r-xIskpCImx8nI_q1-8YphBCtISev/s320/1000112568.jpg" },
+        { nome: "Dark Magician", atributo: "Dark", tipo: "Spellcaster", nivel: 7, atk: 2500, def: 2100, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg7r954KbhipybQYvQ6qrEiKs3COw2X_PHkT2wAtcdGC8nU6ihCQ8bG2fTZ9KyeaTxf2Jj9N0RLbbTWzaE-SOo34g6bFeZSegiUhWt_tsH1uI017HbHJpN9wMA5DYDYXDBJ4ek5ZPhL60Wm3kbFTXPb3Zcw3AAbBK4cQ27N7qWcSnFKBHS379Q4EBq06SjC/s320/1000112569.jpg" },
+        { nome: "Ghost Belle & Haunted Mansion", atributo: "Earth", tipo: "Zombie", nivel: 3, atk: 0, def: 1800, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiTULLDcrdWnnLET179xnxWLrxUQuO63rNzkrCGDehKx_8EfdJKxmRk7ZHLNsupZ-d6gxLQanb91Fcby_KBunRv9V0dZXheukClQtU3pi8DCiCKqULFFdNyfrkFoJcw8Beh9c88dvfRto8JbINGAI09dccMdtaAlcqI0JZZ5hcVOAQ2XfYgLSqK-Ok_bBFa/s320/1000112575.jpg" },
+        { nome: "Knightmare Unicorn", atributo: "Dark", tipo: "Fiend", nivel: 3, atk: 2200, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEifNkH5QW-5h1Xdql8YGzV0NlRxyJUkjhyphenhyphenfV-V3AIme4BnAJ5i_14Ng9KRfEhnXydkRU5yvvozDzvz1P4VjRVq_mFxEBnTtbG8Kfhwr2AU7wXKXwoICPGMTfKaDs4wkphAfN0rv2ktzmldyhoMKX6ZzjcURMlcuQgRsCe4VY3LTcr-MyhKxOYtQNLWIF1sr/s320/1000112576.jpg" },
+        { nome: "Blue-Eyes White Dragon", atributo: "Light", tipo: "Dragon", nivel: 8, atk: 3000, def: 2500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi-fwXg7hswsCOGMExoJb1zFL9QEQVD1SHhiZgfSOadYTubF4Fgsfrw5cfNMTKWLxew2lP-pM_9-yRYjp68WvHhVArevMyUZiqiQEPsuwbVjd77MMPvla8V4JRAdLjtw9wC7AprfTWBOrgjMSo2xB8gCLuJvOllErbX-BhJEGGED_nJiyRywKPksCe40nX4/s320/1000112578.jpg" },
+        { nome: "Maxx C", atributo: "Earth", tipo: "Insect", nivel: 2, atk: 500, def: 200, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhyEvPPv3UJYX71TaE6-wd8HElRChCP3kL1lkvL_oqqs3hK0a-Tyo5MJah27ANztbVvMDeU0sEI9J7GVpF5c9AuHPYNb09GkAMUssSNffo86EHUKZQfiiUtvGxU9XI9ySI98gWaBrMWYdZ8eZLh9myoiVs1JiN-kc7JlAZPVV_rbCAgwY4YJgbHoG36KHRZ/s320/1000112580.jpg" },
+        { nome: "Borrelsword Dragon", atributo: "Dark", tipo: "Dragon", nivel: 4, atk: 3000, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgKFfCeV8AWzgxPr5QkNp2eH6fUCuYyFKAz458Nc7P-G8CmlgvMIxnPah2oJwa7kncML9eZe2NYZyxvqfVMn77v7JVLt0DAGeqlAlmPuhiMPX0pT7z6RoLxgQRTBBrl1Lf-L1eXDtc0i8Yj_bEzU1DQh6SkTP5VFN8eVkYve8HDhOv7OkWt1D4L1MLVMKte/s320/1000112583.jpg" },
+        { nome: "I:P Masquerena", atributo: "Dark", tipo: "Cyberse", nivel: 2, atk: 800, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEifeRHRF0tTommiWgDd8VXoZM7OdFZhn3RjZAFQA79ylfnr2Zumo4ocrjBx8UFZktqj3ii-wFiGajHNlTcVjmIPXGgD4768jz6zNprqoUJhOlroO3InhH23lTffE5JP0o-27AnGi3oBRspT1kr4K57CP-Bsif8XWcOyf4V-c5lZTiL-2f7K4RIzXtSnogjE/s320/1000112585.jpg" },
+        { nome: "Super Starslayer TY-PHON - Sky Crisis", atributo: "Dark", tipo: "Fiend", nivel: 12, atk: 2900, def: 2900, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgvVSBrPA1qui8Tq_CUQ1oTVed2-NlveEdRhp7J0zQ84ZsJOk4oB0MMPmybqPtdJhjKyQl5Hxodj4D_JXDPHOkAWxjOqF5Nz3SWHaMSasjLfK8YXrhXiJSrtg5Y0hoDWds4plbmaR_8llb5i-Bw-VNz_tJKbsWKNaywdpsUgguARrvLzTcgEC-_2nIP7vKk/s320/1000112587.jpg" },
+        { nome: "Linkuriboh", atributo: "Dark", tipo: "Cyberse", nivel: 1, atk: 300, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjm1ponM45vefbvVmGoNTzawu07OJ2GLab9htFN33M4hYxl39mAfSaTuLkPwE674RUIr7uD4-gsVF65B-2ZbdrxdUEgmGHeBNpj_8RocRrdDA5U9CVE4NmxIsm6J4b1Er3zpHUHVGzOtWC8i7Xqxfz9tVeBLFrAS1J2GrOupk79yJ_jhkHe04qYQi_UA610/s320/1000112590.jpg" },
+        { nome: "Apollousa, Bow of the Goddess", atributo: "Wind", tipo: "Fairy", nivel: 4, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhnZDf7re-YRTrGHJJ8NQI9t7NCsO3GcstL0sj92xaHIreYhjD8F3t3C9FNyN353_nyf_Vdtp5ox1164poNL_XHwlEvbRyRRWVWm65DC8MHS4I0-rs-fgORpqMcuAicfF4NJpFYuOgadBzw5ljvQUnszQtdrwHthQJq4p5p2YFjZITeFi0vCayBMHDPzzy1/s320/1000112594.jpg" },
+        { nome: "Number 38: Hope Harbinger Dragon Titanic Galaxy", atributo: "Light", tipo: "Dragon", nivel: 8, atk: 3000, def: 2500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhXLb0JkPqs-EBjnu8uEii2Jp_Iw4MLDRo-jcvuwawL6G6WvSzMvkZZIkFklllSTA0B9TQYSmPWtyOFOmp_Wr19na0t01KCmOalOCNwHaPQbhcXur4cH4J_enOVa_EBuTyZnRuPoEpwHl8oEVTOspo33LvPXiRYcsQfmQjRWj0AvEpq-1fICmof1wOrV6ql/s320/1000112596.jpg" },
+        { nome: "Mulcharmy Purulia", atributo: "Water", tipo: "Aqua", nivel: 4, atk: 100, def: 600, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgEPpptKec68N10KF2fBmgYnqi3DBngfspCYGmlGZklwdidLK9mm2KIRiFr7ARA_5IUn7zNqtW_SXJU2OMheeM9olZADxRW3wbVfoFEM8Wm7CXCO-KbesvAKlfZHpWVWsSb4N4g0FQH4dNfvI8QtC7bAnONpCWBENYsi2r4h2W0G80p8By9SWmxiXEtWmWz/s320/1000112598.jpg" },
+        { nome: "Dogmatika Ecclesia, the Virtuous", atributo: "Light", tipo: "Spellcaster", nivel: 4, atk: 1500, def: 1500, url: "https://blogger.googleusercontent.com/img/a/AVvXsEjG98lxwUno6WzauI-jCq2Nj9JDz9duIC-rEW-9eMeD6LcoPM4dVcAWsNvyqckU05WKRjsVnGVNj9LPTYLsbCOb1pT1HuSK7_9HCqE2462XwnhcU618mXJarURH4T4oDgxTfCcqHb-_7496aN-phk0lXxAXFmawucxNB9rSsdcZKQn_wdfJxWhI2fFNgy1U" },
+        { nome: "Blue-Eyes Spirit Dragon", atributo: "Light", tipo: "Dragon", nivel: 9, atk: 2500, def: 3000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEgVFNsVwQTnCaVjRS-6ZeHh90-2_qSuLvxOcWkuwIyEo9sgR2W6ayYLKGMynpurtv3ZfKZiaeEW2i-rJ3b3BzkLhzEM87pEAE5DEDPLHALhu9Tw-qznKqmbvT1T2ozgR9dFEeWV_mMwEQ7YnnMQ1AtK_9vO-UnC3yMKerUTWXlJtReuOftATXMXs7_f_Q53" },
+        { nome: "Cyber Dragon Nova", atributo: "Light", tipo: "Machine", nivel: 5, atk: 2100, def: 1600, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhbupNK2b6hodf-f-yW716AWDz8-4SqGbfASso7ELeffbY0SiR1YjFb6dx757v2f0NUyAv6Eqgx0VBBKZNY2DxCfsBJAESTQbFS5aCl0FKV3h4LoMSoRevDRxBQo-BBXFTY-fiCjvWjamrCJWHR31SUpjtjAZEoY4i8W1VrAsRLHHn8pBjhga6--1EI4ryE" },
+        { nome: "Superdreadnought Rail Cannon Gustav Max", atributo: "Earth", tipo: "Machine", nivel: 10, atk: 3000, def: 3000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEicKv2pZWEjMELgbMGVVF-KYfA1kCHD-rO6h1Wd5R2EVahjyDgW6bG1uBJ1jzSR5cgYPSwKPywSkK4Nt4v229sCtBpdLmiQpybWOfxUJTE_QnsL6oSeLAef_FHgwOrxAZOB-SAB54bKBKWeq-0DhsGy74UzCRKsq45iGK8sX0tleOb8_Bp2OIzpquHZYHJq" },
+        { nome: "Number S39: Utopia the Lightning", atributo: "Light", tipo: "Warrior", nivel: 5, atk: 2500, def: 2000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhYpJfGZZmw73taZ8qdWKb7v6FzbsR2OWvxLmPesuihIv3ZOIXy1Lg_6F3RAfao92Ed7F2oJQGJUhSdZhdbQEIE7MFuMCQYlq2kQJQs6BFYBmWVtnPOSQXbcHdOs5XsXM5YDtminNcDLYg6UQeu1eS_KGNDstVEOnqt9Z92TzLyGWsBOnp5gjcb4KP3MuCl" },
+        { nome: "Chaos Dragon Levianeer", atributo: "Dark", tipo: "Dragon", nivel: 8, atk: 3000, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhSdallD3zg18kmN1Crvj3KIoVWHO6jN-TysA2L3sscxABjguyhBOKdsxsAkNtHH7Wmf7M__jPqKOw_lUnPZUPF_yr6yztFuUOQIRYMZM_a4iWBq3xG5Yzzr_q4fPFtUIqM4urhRm9VBMGnDk_watnu_R_UTcqxhzTDO_zdPRQ6CF0uvL3fjNmxKBM2xBsM" },
+        { nome: "Blue-Eyes Chaos MAX Dragon", atributo: "Dark", tipo: "Dragon", nivel: 8, atk: 4000, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEjP9wxB911nkgy4zf_Ans7AEnHcIlykIhAPZRlnkwKL3QfEGU0L_7RfT4WCWRIbOQBtCvOLI919MMK4xnx-XexSfVYWHB0_uhdIMOO10qm8lXpDi3EMhsJ-WJ8QHPZhwc4Cp1c0D5qGk3nIGA2-n1u4mYevb2vNgK-TMxMvUCioW1mKqoSzFYeEshFsJDbN" },
+        { nome: "Incredible Ecclesia, the Virtuous", atributo: "Light", tipo: "Spellcaster", nivel: 4, atk: 1500, def: 1500, url: "https://blogger.googleusercontent.com/img/a/AVvXsEgbXxtWM25KKpqclJ00aGJyGRVwNmVUUzWYVp0NND5PtQjIIODwwMmJKdPJGYgd_--AKtulL6nJlTA_PsEfPE2XNRRg9Qn-z7W9oVgaPAaZT-IRafd0ydTvxrKiA2tzpYBEyUcgeqB_SDQDj6gKacmnykX3vnGqTRGel7PGhkcSaN-ZIgOU-qX3eJtHm1Mh" },
+        { nome: "Ghost Mourner & Moonlit Chill", atributo: "Wind", tipo: "Zombie", nivel: 3, atk: 0, def: 1800, url: "https://blogger.googleusercontent.com/img/a/AVvXsEiJM9RbBU_fpHlIt1oqJYnKu1jEN-MyQdF8hPdY3fhZ_sOIWKcuwWvB3cUMLZZiWbBNdz_lv0fi7_WNujoKzvgclE70ogPlsNP35u8ymQ-WVG8G7S66pNrPYKKu3H15cYtTOD-r9Ai92zxCUDE6j6ZHaiFXkfaQG2o-Yx5c-GYiUC87DgI_KpEI6YPCweL9" },
+        { nome: "Cross-Sheep", atributo: "Earth", tipo: "Beast", nivel: 2, atk: 700, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhfoXdEIA1i1PGXRFO6es3fG_b5iarMup2nOVtIn0GM8KUcUNPNDxwW4X5Fm4q2EDdwh_xoyn-gjuRqxvdKOWypo7xkh_DVuNICkXo90SXukfkg3tnpu5zcADv0IApuDx1na4N2d6Dct5sjK13vHv1B34bKjbU9U_XHYeoEu8cK4WPaYEz0u1qqNCnLqYb9" },
+        { nome: "Uni-Zombie", atributo: "Dark", tipo: "Zombie", nivel: 3, atk: 1300, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEiBP6S5TwsLIdqMfIk9KCINE0R1o_6TC_O1UZNbckq-YLvjTfCRMNAVxHF5a44u7mfZ9-dRDQ6hM4Plmd1xBXhV7TA83R9ZeJfkOoAyiSkAozEaIQSBKdjq-TmskRtKSmlJBa6VWx_ZfEk9QRUsB28uRyLYwou64jXJMoqqEYUkbDyMkyGPLFWghcaD3BVt" },
+        { nome: "Black Luster Soldier - Soldier of Chaos", atributo: "Earth", tipo: "Warrior", nivel: 3, atk: 3000, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhe1GNaKat5obBFGpyqTLIYnYmRtRJC2_2N_ghBpHYKXK-pdkCJ-zzzCbxQCYd9q0XcC5oPQN-u0BuM3i8XPgPwNVeqMZBIKOXfn6gAoHC8CdnxUSAawrfNRQspdti9b35mW9oqG83AlFK51380bt9yLFi0pL4g_NF0NV3EgZqvwEOA6fk4AY7FppPvq9UJ" },
+        { nome: "PSY-Frame Driver", atributo: "Light", tipo: "Psychic", nivel: 6, atk: 2500, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhyQOYv2Y3n6TwcO_XHQ7xej2wwvAiHP3G1qDsdhL67_Y1Dh3R8z3p_STcxsG1VO9BGqUA8hwO-U48EWn--Opy_ZUmMFDh69IqR_p83YOgm6-XZMPLEURJV4EZcfXEvMOFnC1b9jzU53Bey5e7z1e2TfDgAQXfTitzYHrcM5tx77ltVvFjwAvOJI8l8Bokq" },
+        { nome: "Hiita the Fire Charmer, Ablaze", atributo: "Fire", tipo: "Spellcaster", nivel: 2, atk: 1850, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEjksp6s6EMoyWwbK84Bs1M8UJvy-Ko7aQN7kCOAjqg4QCxPxxOkwfzQCSp4JcQv_du1V1yZEYSj1tFSm2oryedFCuRdWOCIjPBjdCH6llTE2veQzT-mpAr2FWakUP3rqzaSYwWgWz1mauTUXipntFtp9rYXXNuxqta7CQD7FsxoWkYiWXPwpY-vXuk3uc7G" },
+        { nome: "Lonefire Blossom", atributo: "Fire", tipo: "Plant", nivel: 3, atk: 500, def: 1400, url: "https://blogger.googleusercontent.com/img/a/AVvXsEgTP2l--u9OFSdULbPKEm-oWY246ilfUDGL89P-Qt6K1mTUAjqZi3o-89X2hgC_PGUH5UmDWUxUm0sU4uh-T3_pfItZ_7_w1RGxcpgHGXamINS4CW-YH4dQp6ZeA0mG6D_xZQ2BPInwENO5bThT2Owg5pC-kzPkMQ0XVgjT_rgty2JNveTqX6xxSZHzc5aR" },
+        { nome: "Evilswarm Exciton Knight", atributo: "Light", tipo: "Fiend", nivel: 4, atk: 1900, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEiH889P076rh5IVFOMFzcfp9eHTea89OxH0r-nycwT139oWIVVLOV45mZ5JwNxIyvRgBef7k00OEfDqutVW2XBiG7ikYZ0otU-zjQwbcOGys7Epu5FKlLQRhaHZz7ybb21waQMHjyDNpwYRpnvTOmUWH5wwERxYleyDArygcHT70vSyyPFi-_yWd33Dn06W" },
+        { nome: "Galaxy Soldier", atributo: "Light", tipo: "Machine", nivel: 5, atk: 2000, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEh9vO7zOgW0Px7xICRs7gkBfVaacJGJjPCfIkSs9QyI2sAhSmxXb_Dhnoz5AqzpUFScUr3O-xgKrqkN0ACLCfHVMrXRVRed5WCoLGKwqpxGEmyRxYMNYWikfM1a6ewCeYdxfuVp9Fct7jNJNuXntUwBstHqZULNlV6xnIfQXVKglmSHLnw9TnBfzDGnF32W" },
+        { nome: "Selene, Queen of the Master Magicians", atributo: "Light", tipo: "Spellcaster", nivel: 3, atk: 1850, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEgntu5981fAHijEYxHX3uTwM_nPYGkxby6jrrZ4ar0OOriiUqwe3ktWwbehD4bdpRiU9JYi4UMXWFOtSAekVa3JCy-SFAf8_HzGEFEZLGm76Qggx4vxt4WM4ogYJs1AU5tDruQvEYS37W2MevCD5lxzt5G7myGr96p36Cq8ri9J1YmGgwJv4xeMmXRguq9n" },
+        { nome: "Stardust Dragon", atributo: "Wind", tipo: "Dragon", nivel: 8, atk: 2500, def: 2000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEgphSO4c2ciWNWXpX0-tsf-rZBs1pZgTIBZZsHK9BxdhCGOiIfZpWexwgzv3oZVhRu34r3dyim9goPVcv-BhmhX9CaPPGGUCDS4ZFnUu-WAHyMBrXnHyn1BZlmtprxWIhL2qxf-RYr53rgf3Z-a60k-LUiJFtwPInnsp5L4rxxCpGzNwwfkwkCnaw9bkIze" },
+        { nome: "Red-Eyes Flare Metal Dragon", atributo: "Dark", tipo: "Dragon", nivel: 7, atk: 2800, def: 2400, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhhEGJXWhqM2FSetmnxF3MBi4nZgxJrDMBGVxCYzn7c6AQUt6qPPGrpIZ3UY3PFBdW7tXDaz4Y6sB7sMBq7nGor10TqM4ai1x_p4GD6FjImZj7njq4Gl3r8PnF9VA4BIB8nmhqMA_taEZMYSQy4KROa_pAdGzgDfh9bJbnL3qX-wU9zCSZKxuYRnCC4XKef" },
+        { nome: "Titaniklad The Ash Dragon", atributo: "Dark", tipo: "Dragon", nivel: 8, atk: 2500, def: 2500, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhZWiyH1yA-0brGJzCIY4AQEFS1pM5lNpnzdkNt-UDItq85YVsRVI3SkT8jcN5dvHA1A9LKI1Gu1ZmGIBhV2jzJpJpsYp9o9ldiqHm_nnzYqPv2Kqp60HcuR-rRdx2A4FeV1ouApoBB6Kp8wwkI0rC6acq3hwOcxj0_gSeAKSyR0-JlbohjvDXfWSNJhCMN" },
+        { nome: "Galaxy-Eyes Full Armor Photon Dragon", atributo: "Light", tipo: "Dragon", nivel: 8, atk: 4000, def: 3500, url: "https://blogger.googleusercontent.com/img/a/AVvXsEg79pXfpdQfJ02mUZICV_KZbYfOUWUnaRKK2FLG1UTIkIJGFKanN2TbE09IXjVRKwX1b7Q7NfiOILjoXsis2nBDVxIRg9uxmjjEhcozNJI-C93P1w7T66KKY9cx4ZSlb-2E8EmGQ4noDsRslnTXFjy4SE5Zc1ztWZFSUghL7se1Ua1AK20d8UTlUiJpdkDl" },
+        { nome: "The Bystial Lubellion", atributo: "Light", tipo: "Dragon", nivel: 8, atk: 2500, def: 3000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhmDDyXTDYCTutJIB2s-hwQNlNhGD-nRelPCeQNv2d0E_kJGTHjMD38wvJ7GmfKsUJ91xO2PwbUvnujFA1LBuu486YvSoxrs7c0xAbfG-vkKxBfThUjvk_VOBco7PwceFT2U0RceLuCWLO80kITGR_kDIvKIGTGx2Cd4vQfKT_4p6WP0OSFT2FIjBdB0YYN" },
+        { nome: "Apprentice Illusion Magician", atributo: "Dark", tipo: "Spellcaster", nivel: 6, atk: 2000, def: 1700, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhbFoTAY-LJQVpMdcnWC5lGGuCLlNwQsftGZMn-3A2oHorQu0xyUp1JQRpA2tkvlpt40Xh8TQuc8mWKCpyuwl1vE5aHNW3liWyDwEQ8Ch2TxRHBAjHjEShIK5Jv-U1rPw7HWbf2S838uCiPGHtlIfCHNaMLV-GKaeQZxHznzCaa4tDSH-avP1qkUALsm0C0" },
+        { nome: "Armaggedon Knight", atributo: "Dark", tipo: "Warrior", nivel: 4, atk: 1400, def: 1200, url: "https://blogger.googleusercontent.com/img/a/AVvXsEj2H2n1LgS9XY-UOazaRjg2LPakeF8OyWUpdGmqVkwCWGNp-HKLF0eiPNIHi490u5r2t0QQYlzaRV9-bFR-diEhPfzT-EXA_RY_JwQQAVhl6vw_qF3XqIblrS7MvVNNblJcRsgbEETOoednaOOg-H-MHmt0jRBM-EO3OM1rdsN_NXeAJlVftzkhbIofpbm3" },
+        { nome: "Blue-Eyes Ultimate Dragon", atributo: "Light", tipo: "Dragon", nivel: 12, atk: 4500, def: 3800, url: "https://blogger.googleusercontent.com/img/a/AVvXsEgoiGZ3tWOJV3VMWPuqtjKKjvMj341OidqBUSFEgyhQZ7aQszNMwS6K8UKaXtzlRMA3LdO2ziVyQ5yVU5Ti80lwSEOEJg-ge5nK_xs2Ut1FEHaIlnIYgZU3FXWpPNct8A88oWw9QMrHX1eouRTvCA0CYnYidwipcQrrGHakQy07mxf_OONoaa2KUq32zmV6" },
+        { nome: "Mekk-Knight Crusadia Avramax", atributo: "Light", tipo: "Cyberse", nivel: 4, atk: 3000, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEh2_g0wSVQ9Uwj_qoAfiBqHjoiu1YenpRu5cLyQbjT6RIzGSR5KBfCwGeaRan_7YGv2hVTgGYy0hoYg9W56q0O7ulZNnx1TxUOJUjFoH9V_S8E-dpgS7DCGFXxqEV6WWVCVUihdtYmJdGQrOSNuXnX_vPv9Ec8_mun1P7ykXvJ_Y_9aA57JxKr9eVp7i4e_" },
+        { nome: "Guardian Chimera", atributo: "Dark", tipo: "Beast", nivel: 9, atk: 3300, def: 3300, url: "https://blogger.googleusercontent.com/img/a/AVvXsEjaWBQEFw0sbIpxfaJCKP5IdYX9NSahUjRPGAPF-8YWBRu6FJ9DxRzzFnIQzk_gWvgoi4qAH0tWGx4_YYPEPkk4PU7x_HDQ3rsrV1F6dpikW4RZLmy4CFQlCbNB3DrWIZ5qBGfToUXuCpaMkhjaeUsZ3WuZ0kHMuI6aiheLwTvXUCCTYuyB89PURJZIQl3W" },
+        { nome: "Cyber Dragon Infinity", atributo: "Light", tipo: "Machine", nivel: 6, atk: 2100, def: 1600, url: "https://blogger.googleusercontent.com/img/a/AVvXsEiOufR1WoBSA8-pZJ9ykm0bM1Cy4TYsE3kz26uLcwDVi0UkzCgPm9EfYVJyJ-k_wWUi5I8-K5Cm6LB6HFKdQOkWBRidsLEqQ1CF6mfizEbZ8smd5rJmKWl_aRpMitaTbwcF-lhw4TikV2zNPPQ5rg7RenzqKm2Z9--xKiVbtJUGzeOQUtAHUxwlg89pNwiZ" },
+        { nome: "The Winged Dragon of Ra - Sphere Mode", atributo: "Divine", tipo: "Divine-Beast", nivel: 10, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEjo95J8ziqUzqerdIORRAqV3roiRKI5GDk7Eamsz1yVkeh3WLq5olHgrnUK8l3l9sxC00cSfwsJt9nilJDXx6luiCZi-yvSCKhUoDkz63mJdDss43yo-LFrpf_VDx913uRFmGmr___JW9l70XH2EttqQHEhjPMfbOjfLMVi5Oa2ggiabD0fdqWb8zoqP88f" },
+        { nome: "Destiny Hero - Malicious", atributo: "Dark", tipo: "Warrior", nivel: 6, atk: 800, def: 800, url: "https://blogger.googleusercontent.com/img/a/AVvXsEjhqObFrVCL1gc_XAIOO1udNxvEuTRyeBAnnUPH6coymRAlXFVTmApA1vHODhIKBKJ02aRJKkwmUfW6SJkVvIiilhP5Id-MPbtm1tJgGFzbFN33udeC9hbGsvOjyhAtaH6C3vYNCUmIoCoWqB0qvfcoRzzu8a6MEZqzllDqdFZ3HyaSf5PsHwT9BEjsY4fO" },
+        { nome: "Magician's Rod", atributo: "Dark", tipo: "Spellcaster", nivel: 3, atk: 1600, def: 100, url: "https://blogger.googleusercontent.com/img/a/AVvXsEiuO60v3ncxsMNCjN682olcipV5EJGBxOWsD9-brMbt4-4PQXKfan0MY2y_Tgf-jQE70NyXMJhIz0CEyQbbU2eQlvCAq7BVc0BxOwM_6uyiD_wY_ValSFy0Ha6220jkzXzftT0jqIYkulLtr81I0-W1SBqGIRebScZCJ_Nt7qjKEva_ZRwU-Nn6dcXjUzM5" },
+        { nome: "Tornado Dragon", atributo: "Wind", tipo: "Wyrm", nivel: 4, atk: 2100, def: 2000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEjmXpPZzgB4PTb7DXOU9Dv90vC4KlHMCCQrrs-u-U9TqHV2KmOgmPaqIqwhF2EQBEWEzYKod9WLhekILP8A5hHLLpcZWot8MJJb-JPMWOwasBENQ99lPuxJJWdee6xfZ17UG_WbiK1aAzJO85USeaj2RbUavi5XJ0diEGzHxCcvjQD1gS_eUST6_AxCPVo5" },
+        { nome: "Destrudo the Lost Dragon's Frisson", atributo: "Dark", tipo: "Dragon", nivel: 7, atk: 1000, def: 3000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEicuCjKGyBaEIUg6BtoXpayjWTbehN9vG05hcbyqjQOfiebJqezht_gk94YiNUjvkk84i8Ky76EE8weYDMjPjSi-VY72JC8-oGGdvCNtzVl458T_B1HkSpofPUPUoVMaUkSMT7xdcGqRFglRGd_pQZNNxgkFEofC8l7AX9H6rDKbNxBmRdiJCLZp_bGjCm7" },
+        { nome: "Lava Golem", atributo: "Fire", tipo: "Fiend", nivel: 8, atk: 3000, def: 3000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhsr4dVk19hbABMMQ_-lAQgEWBX97eSdeMlxazT-jnJc0WfPXBsF00irzv-RaKdN42zSHUifiR2N6fisYt4Clx3kWL6JRe2boH27_maKDKZOmo8Nn6LthtS-6awGE3VU_5net5DP0HSj88mq0UudFzB3leKZ6zJu8k5C-4GRRxO_7nZV_2TPpg8YaFlT8Kx" },
+        { nome: "Link Spider", atributo: "Earth", tipo: "Cyberse", nivel: 1, atk: 1000, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEjiTtFUiupbRgbxBWpa-BAEfe68bNa-8WC45Wn6Fk1cHkEb2nP3_1V0OgS_o1R4xPjYZ17CjC18rFkz6qEj3RX-lRsaTQ3yJe4RJMsS98M4gGgyfQeic9qIR42wsKw5_KU-S6UY1YXOE1_5xvA3Z4Wst3mvYgdSa4lZw6_AR5a1NCqCBFqdQayePTVFJpQ6" },
+        { nome: "Swordsoul Supreme Sovereign - Chengying", atributo: "Water", tipo: "Wyrm", nivel: 10, atk: 3000, def: 3000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhiOo6vTpcLbISEd1mpBWpIDeXgAv6T4EoC7xi5Yaed9sfjohdJH6e68nfFLkpeNW52KClJd-Eqw9vtlGNT5GOi7j38mgFWW7v8YLfjFpff1JUcocL7ZKRZMVBIfjc3MtO3boriBM14Ok2V2ojg9lQ6DwFhqvyjE-xQazLlTOBpDBbUBMyL_kTeQb7lTFRk" },
+        { nome: "Blazing Cartesia, the Virtuous", atributo: "Light", tipo: "Spellcaster", nivel: 4, atk: 1500, def: 1500, url: "https://blogger.googleusercontent.com/img/a/AVvXsEjE7yp1WcduOxBE8VrDJkLtM6r1Lhj7AFJTXMTiRHpMpoieFKrkfw0agOCmKavX_r6T0IR8ZlhS4n2fgTWm0byj0PvNjbWa_HTNSh_TCdqNXoWEQ1uGLlJevaTinxB8Oo6JQEoXJkTN06UQ8lYUox-zVu8uRrGxIzsZEei0j8idr-DySqkoa6Z6AWc03Id9" },
+        { nome: "Manju of Ten Thousand Hands", atributo: "Light", tipo: "Fairy", nivel: 4, atk: 1400, def: 1000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEgsFNTmvx1aC5R35VoUxm8Oa765hez7O3pvC9f1Hq75iPu7kxxa4fN1ou_5cvGf3ZHg73xsJ-7yewt4KTsixMuNpqLEhqpSZtEdV2To-6DTr3WAgSOMJWDVUJj_fSnWDdybtNC2u6ecAGM9Ei6vp5d3FYks3xNbo6SOBXKyTTT-oR08vBxnezzgZAo5mMBV" },
+        { nome: "El Shaddoll Winda", atributo: "Dark", tipo: "Spellcaster", nivel: 6, atk: 2200, def: 800, url: "https://blogger.googleusercontent.com/img/a/AVvXsEgsrYXf4cmHwC120xPYIGrXyUKvG5Df4NBW0AbjopieTl8KsR0b7P6rSf9bqfJeDDJgsT16KXguLdxvpjI3Hm1mqNIYtjY_fK3qU-CpO_s5F2DeyYLBDWqBExgSVIWuFpLKWY5JFLUQkncRnpNDHGJrFcBWdXs3030M_jebzsXz7_zuavj3QesQB3n7V1gj" },
+        { nome: "Dingirsu, the Orcust of the Evening Star", atributo: "Dark", tipo: "Machine", nivel: 8, atk: 2600, def: 2100, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhlPtOrbjrvd-GbSjgcozMi_GZAOSH0JDoa5OQJmxMUlvXUBfi3pZHdLjvmx0-RkCOXpWnzIZF5PtPKXj85mUCQ2jJZIDEYwXdE3guBQo2k1T4v1Wr47CnEtj1zF_U37k66a_r9zha-EqPmvj0YKc_j3CwydFU3HeL_kZVte7vtiTBvmxBAOjq1JCI_pFkd" },
+        { nome: "Diviner of The Herald", atributo: "Light", tipo: "Fairy", nivel: 2, atk: 500, def: 300, url: "https://blogger.googleusercontent.com/img/a/AVvXsEgrT4kghDVe8vnLug-0IRn-kjohTUf1URHV49rNeGDNsh8e-GwIjFe2WssEWEccSzRwO7tqcyBgnG4d6_vAenj9ZsCwZfOwE_d-_ihXvOoxJwOCMYemdsE_BPFSDns9Qb4G_849HtlBQ30LXSVj7OtqtLSYXMGV60_uHtlRVpStaqOOyDVDbrLUexkN9FwH" },
+        { nome: "Toadally Awesome", atributo: "Water", tipo: "Aqua", nivel: 2, atk: 2200, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEiYBosp1JJtEPsNqYP-9e4XThVTLMMjTstmWHVJCJPMJex-nHEUDO9DAEZl2SNhKYLACgovKgebkT9-8QHCqNsCgYT_fTe8vs6m2t1BlUBg7Hyj4COWFpwa3xuYxFbnfGomYHC5CDQ4UL4dh_3U_OB6Y8tMuo-0vz1-iXv2RqbBUmjJcZPr54sDju0-OeDO" },
+        { nome: "Aleister the Invoker", atributo: "Dark", tipo: "Spellcaster", nivel: 4, atk: 1000, def: 1000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEh8oSCBpB-c6kaGLgkVayOF3cu0ASBISuu-UGpXY5ldDKFSFXhzBEhIcvtA3wFfGfUIgQaH4P5O_48N6YBxbDyhufJJBqaR40_kR_oQ-h36TJOaHbvwAi-OxFEwhQAgP1yMgrV1H7lyBkP4b0wJm9vesO3kVG4IPSc_AD7pDo-cvtIrprVT8Kv6RGKqGG1F" },
+        { nome: "Number 39: Utopia", atributo: "Light", tipo: "Warrior", nivel: 4, atk: 2500, def: 2000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEjOaxCJbsL-UeYUdd2RIiWIRsweg6hlO2ONYdnFcCX6DAcbsDAQNshx3wYcz0Vu5AUpv2EwNxoqp3-gTx0Dk-fJtiyrg_LgKLrqL6EhKAREfR9Lq1HBQ2ENyFLEi8soUkpjLnRBK6kyWcNqy51iDHQxKXHJAL0bqaVPXF4pDeTKXMWfnK4vzVdaQIRNiT8u" },
+        { nome: "Dinowrestler Pankratops", atributo: "Earth", tipo: "Dinosaur", nivel: 7, atk: 2600, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEjDXAfePTTA2o5R2Mt7DgW1Rfc6CvIy7xlmKUNOpSht76KDeUzDT0kWb0F4EQKe408PtneBbQtg7W_cPCZbO90hKq7ocHtulHI1nxEnYLBP7thX9V_nTcMWTqJDAQNrsT1cSUt3DCucrBEI5_wh1dWJT6-GHNr7_5ZvseMBrNqPEeUyqy35_spgZpABi2YO" },
+        { nome: "Number 11: Big Eye", atributo: "Dark", tipo: "Spellcaster", nivel: 7, atk: 2600, def: 2000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEjpne8PIFEQX_KufevrIKMdOyl0rSL-ftbaV8lhCbAegFroQcjSKlwol-xPboX-SvboErgL8iWOREV65_ML3x_L3ma0UTqa2bkDWQ2Bl1WHZ_sSLCFJ-CSmQNuPRaHW2vhrPMyPN8Iz6Us1NfZwhQKxF1DPqi4f_WdYZtODQyDNqZJj0zfgAybOBTZYLDKj" },
+        { nome: "The White Stone of Legend", atributo: "Light", tipo: "Dragon", nivel: 1, atk: 300, def: 250, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhDdSafk5M4fHY3RFRGGgtxVBmLqr-kUs1mu7oKJ-3wYj8rxNRMdoR2eg72EiPDPau3x3CUgxU_0eQx3GXrymZvOuOBhQ12TFReN5Z3hQYjdBt40VN5Z1t6_EWSAjZ7WIMXzFQmS8dCXH0_G6h01LuLCm0mXv4_w_6KVcEoikyjg9YGh3MvFXH-kMuTxyPq" },
+        { nome: "Herald of The Arc Light", atributo: "Light", tipo: "Fairy", nivel: 4, atk: 500, def: 1000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhiMSXWwzJ7d2SPI3bwldD8KsERzL8JF-spQoVcDcXJuvrD9Oab6V5U7beGYlb7sIVrNJeXSyXBq24E8CJMo_yTUKeAUfoI29ka14n2YCvR1jFZKtneMs6s7FOShZ0F_4S5L9np5myhzueChjkknDj2xyfyIdLrbXkFOZeWK3V1KFIWyCcWy2S-Rl9f_YIA" },
+        { nome: "Fantastical Dragon Phantazmay", atributo: "Dark", tipo: "Dragon", nivel: 7, atk: 2400, def: 1800, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhCYXCPAgEp9oxqKluZS9RFQQsboeroPt9P7z70d8B9Ku22xlAWzpq9JW1E5rixxKwdb0grUXchh82IelxZx3hoNgOblbaBdtjjwVtQKAJi_bj_WTI6ovP7tbzUjgut-g7Ugyd_jA0Q1AkRIWZuXXPt60512AWimywbsLgZpAZVAZY0dNfLiRvaPLzg9nFO" },
+        { nome: "Invoked Mechaba", atributo: "Light", tipo: "Machine", nivel: 9, atk: 2500, def: 2100, url: "https://blogger.googleusercontent.com/img/a/AVvXsEgoxtsI518lr8TT7LhUQl6SNv4y57BJzCJUcoRWLa97z0C5CXn_QcrDCy1ek-odJbPbxJ8W1tnpMmfhWl_jjcpptSAQY7ffN5wMhMC7HS8AA-4rEJmxliKwgk2nx7k5GIN3Tij2gjeJGZmcUPVVDHKNZytc_WPH6WDMRfGpu5ANVDgahz2tY6wQ2-29cuqV" },
+        { nome: "Red-Eyes Black Dragon", atributo: "Dark", tipo: "Dragon", nivel: 7, atk: 2400, def: 2000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEh1jViFcHRCy_7KdhRNhMIujf9u-GAW1Mj14mJtUO9373A59mtKdUWPUbBwmlAa4gBe-_PQuEoVQHpXkrxcD_OPK_eAwYSbyuZg2fi4xev_K8a-SYbozlaqpQ7Wb10jPOb247XU1GjEIjB-JFJQOfNhszrIhtsIwY0-Tnj0ThWZbLki71Ml1etvTE92JDfj" },
+        { nome: "Black Rose Dragon", atributo: "Fire", tipo: "Dragon", nivel: 7, atk: 2400, def: 1800, url: "https://blogger.googleusercontent.com/img/a/AVvXsEhX6ueusSZaVh5PzAykd5I8RDPeS-gvb4vx8vEpHs4crCPKzWJjfDzTO20WNMiFHRy7yCVX-EaMI6XdZ4qSWVkoW2YenKrC6Hy7zZEU3Gj7AHDlMCjvTyYT99Wlbs1sRWKIqQmZg45KAu3sxMHMUppxaVS6MwdfyKQvcff_Nr_2g1qhbtTemMWV9t7SGzYq" },
+        { nome: "Black Luster Soldier - Envoy of the Beginning", atributo: "Light", tipo: "Warrior", nivel: 8, atk: 3000, def: 2500, url: "https://blogger.googleusercontent.com/img/a/AVvXsEi-QvB5kVgpo2c8VEW6EL-F6sGbeQdZmhRgaf8SsClJ3sJmnOn1nyVNXv5tpi1dZwBcO1mB9HLUtv_LFXTkZC4OLquGS0BNVcvkJIR-OAXM4aJ6rQMt6eViGaBvTxhfezXQ01xNsb_lY4ikwulj7-qraCpbQZJfAHO36eBmUdkGkewL5fO6o8NG6aVUEwgS" },
+        { nome: "Diabellstar The Black Witch", atributo: "Dark", tipo: "Spellcaster", nivel: 7, atk: 2500, def: 2000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEj5DIAbpcKnOmo79q3SptAyH1cmTt73IxaPOewzhhB8FYkFZxIniUsw2oQoJJ-c4W24vZn-wME4cIrVbdcLgxQelLRmojGc3zSx-3Od-J2ZIlzYB21SwrIo-SBR7GO6xSgaB6bhIvpRe0XMr7D7dRLfWBjRGLmUoek6tF3IV3vod-TNdSVx8bWHm8ZiK_2n" },
+        { nome: "Parallel eXceed", atributo: "Wind", tipo: "Cyberse", nivel: 8, atk: 2000, def: 2000, url: "https://blogger.googleusercontent.com/img/a/AVvXsEirO-Ruz-IFNjMchv2IfBXYdqjkAJWKvADV41MDZ3L61MMKCuUODZH5fIqshJWHRnTfICffExy8e4s74So6U1NhqP3v9Il8_pUD3ldneuzWTUUg2GfKiDWyW7vTEophgUGwASyIzm8hxfuCqtdWjzLt1CPOImR2wvP6M63c8RkbaKN5F5M1GyXHKdiIWN5y" },
+        { nome: "The White Stone of Ancients", atributo: "Light", tipo: "Dragon", nivel: 1, atk: 600, def: 250, url: "https://blogger.googleusercontent.com/img/a/AVvXsEgNutJV41ZUwr3yv85XlCvmfRWgG8fwLR_Rp8UHbT8yPmvKC7iAXNGIggSXEDYot_CPSca9dFe5M06r0sjJNVCr_00rOqa5_5ZrmpGLQnt9l-imK3sH5dgg-OeXT2tnO5hnJfrFzaGvIJB-ioD6vwb-QDriCp_iqxaN8hAWMPsAZWpjevW-Q3Fz1DsTi6kQ" },
+        { nome: "Predaplant Verte Anaconda", atributo: "Dark", tipo: "Plant", nivel: 2, atk: 500, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEiUl2WXtf24x-W-0vPbnAMpR-bq-wBSSJKIlJOL0ptk7voqR7lVT05Q_wVQRfTQUwMsfl_FXz8snQzwBKszbxLIg0nsQJTlMHHWgxzqFe6PHcN_lIhxlR-4u6d4jN_6h7it5-BOTWXlsU5QcfizgEcTvfRX3WiqLbeT8l02FPx4D8gG7kbtWYEqplEMjkXW" },
+        { nome: "Cyber Dragon", atributo: "Light", tipo: "Machine", nivel: 5, atk: 2100, def: 1600, url: "https://blogger.googleusercontent.com/img/a/AVvXsEjg6WBUDmUkTLoeRQCsgfNw6rYg1CyUyEzoPfIc139FGTy74RPHSLQEGmSyGESEG3mAVNHu6JWjlJSdUabHMNRen32irXvgLyLHSkIe5sNgKP2lrPAdeZvmwuofk5oY9aVCHxHj8u0GPByi0rBgJMMmKIceW7oA1Gv4DMTo1s5FrRiqoy_Ct1MKh29liPhx" },
+        { nome: "Number 60: Dugares The Timeless", atributo: "Fire", tipo: "Fiend", nivel: 4, atk: 1200, def: 1200, url: "https://blogger.googleusercontent.com/img/a/AVvXsEgyQMFzkORe4QJG1ZhsNRtXdy2woZABPn85Q1nT2OxEXWEuaiQTgNLSefXAiSOdrQA7wIu3IDoVUxOswEC3n4aSQamv3fosdUyLh4j0FcwMNWizqVLXHvEzsb096WpuN5SpU7AEgqc99Kflmakc3MWe9Lcd93tfShVToZSV1vVsGjAw7gxqGLP-BDB2yZfC" },
+        { nome: "Jizukiru, the Star Destroying Kaiju", atributo: "Light", tipo: "Machine", nivel: 10, atk: 3300, def: 2600, url: "https://blogger.googleusercontent.com/img/a/AVvXsEg76vISWzUnCSR-fq2a1fiRBYIU6G_H_2doht0OWtMXIS9XfJMVeu7ky1IFb_aTR0imEtv7SpQl0K40UN5xP0E4ZF2lj5Gogy-YMOC0x4h2fiFrGEtxSRLcrj0a_m3iUPHIheaohE2cIPBuGFFxqIBalbVfCx0zwmmYY3INjV-os6CUukvAwnR6B0vlKtcd" },
+        { nome: "Thousand-Eyes Restrict", atributo: "Dark", tipo: "Spellcaster", nivel: 1, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEi8IdRTmnx8GsaGo-doLAIXprCBiE7MlRL1Wpo2Jp12kL989mV20m19rL61It1HwQxKml8X8bj3M88fKWwR1Q2VXnfMRTIWTyIDF1heSwFlyVvplhFDNYb1Z1as8CGVOaIKLBsieGhURC-2iPCw-u-oETvJwgVuxfek_o00uiqIncSvQ7Sg_KtUYH8Qua1P" },
+        { nome: "Sky Stricker Ace - Kagari", atributo: "Fire", tipo: "Machine", nivel: 1, atk: 1500, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEi5rAbVkg1Rq5Y6moerxIi__EvbqdxusplcjnGdgyy7BzI-fT3UGFiORtsKZJYJf0NluxFjASgj1Mkhp51FPdO3PshqTKZNR02bTXp2f6G6DXcHp3wtqRJYDF0JgAJJnuKmvRTDWFvdX2vV-XiR7aw22uSjqqXv5opWIGY3mTX4ylc-e3WS9KtYVx6UAwR1" },
+        { nome: "Aluber the Jester of Despia", atributo: "Dark", tipo: "Fairy", nivel: 4, atk: 1800, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEj-YBhvWzQL0Xch8rcCfJdfxYlYGkcCch1-np_euxNgS_0LsY9IwYBAw8hPlkdDejUMWGbOgzi5Is5Ft-mvJ2tNW296X-CFuAcHBhNqqCo2xqn78P7IXETSPQ4f7zhXGCd6xHAG57bxB_VpqWbk_BR2oSPh4uGOHObZ29llX0NmSA6ipsfh75VIH6rRRS6S" },
+      { nome: "Exodia the Forbidden One", atributo: "Dark", tipo: "Spellcaster", nivel: 3, atk: 1000, def: 1000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj7D1gKcV7XCa7Q6tw30Tx-X0NoIxihf4uRigFmWc35LPjT5_NwifkYPxtmzydsnWRASTVq9UgAq5gujL51f6pByAqSQMyoDm1Q0fZBPqvzOIwcmGlpBaD2dRldLYLA-RC9WTLqT7xrl8l75YWC7YphiF_k13zJ3tzdbVNz3zGzrJXdtEi4aQbW4WIYPpS5/s320/Exodia%20the%20Forbidden%20One.jpg" },
+        { nome: "Slifer the Sky Dragon", atributo: "Divine", tipo: "Divine-Beast", nivel: 10, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgKEOAUXFoQYALItniWTu3ZXskv7PGymXqSqjyaJ_PchfNFuth-eciTUC2B3YnX2F81mPhgLh0XjMK-0q4xHeaOSJm6uKPyiy264fmfM2NXJYek0-LHlz2x0mLsbP-AYaBajxUVWUJT_geAqwLDEzMB70kOIBe2zeKBdvs3uj52PTo853DNPTC-1FTw6Co7/s320/Slifer%20the%20Sky%20Dragon.jpg" },
+        { nome: "Obelisk the Tormentor", atributo: "Divine", tipo: "Divine-Beast", nivel: 10, atk: 4000, def: 4000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjqY2wqLhODp5x5ZwI3IIAyyXPbLvBIIuspr-ghPORq2GYUNvPKiJMfbB8xooCguJGA2N7UyLI1OQRhfEnyxPNnczj5bahUWZtYAwp7hGR-H-EZlLDNKEnw17MUeakVqlrRasyyH1Z68VbOouptRLJB4uEy0gmXe_Xznljg89XNdJHUCJ2qQj2EMmtD4whC/s320/Obelisk%20the%20Tormentor.jpg" },
+        { nome: "The Winged Dragon of Ra", atributo: "Divine", tipo: "Divine-Beast", nivel: 10, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhRrIKDYfHwUuc29pbsuW_0uGnWr6dOlxehrGVyftulpXKqOtKCgjxXVtc86qWmY1h0wXAKLYQCAORc93pXWVi5zrORDzoTGkVlTSFJC1lPmPLUA2r7dt06vG3oY3laRmEzdGTAkmdCT18TvdrYCsmd45LqmDr2MeuTz-Wb55VjmGRynk3UNUn4foLNsZq4/s320/The%20Winged%20Dragon%20of%20Ra.jpg" },
+        { nome: "Jinzo", atributo: "Dark", tipo: "Machine", nivel: 6, atk: 2400, def: 1500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjDuaoEy1aTAI4ADye067ChIMcGlsze-_18AR1Xo7UeC1crw3LRyMAshWjWhxrwO_h9gyyVp-8UxyMUMwP8ZX9eUAHlQNT9eWEErmcyTNUI05hEiq4JCoJWbkngNT5xNPuZwtd8otp3jwkHp2DjuZR34u4rbqLvDowbP379w2Gi0qK6yBSC2RyZZLCbCTru/s320/Jinzo.jpg" },
+        { nome: "Blue-Eyes Toon Dragon", atributo: "Light", tipo: "Dragon", nivel: 8, atk: 3000, def: 2500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEizQRmLbGqvZ6r5GkfQ9nwhBYCEot8rlhOM3lLpaWpMt1Kr06PNbY6L_DDMmG6OWStllZ4hagvDq63yKj7FovpXmhrPsUXh2seHE9ZGMqr0yqq8oOofTlhUPP7-tMxX4zYB3qVqZAvShMui3VzTs5S0gylu_AyPGi05A9cr4p_takEa5cNAe4Q5OTR9PVGy/s320/Blue-Eyes%20Toon%20Dragon.jpg" },
+        { nome: "Summoned Skull", atributo: "Dark", tipo: "Fiend", nivel: 6, atk: 2500, def: 1200, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiZMbMpTFuIHuYTQC_ZtDylieYtOJIP4Nt9wPdellzcU7Z0s461dhUDEUdexH3Ld8p9EzABsSAIK6oZVw2WokSvFAA6B1FQzmfbUiigd4ZVBSBZB7SAQSCXM47d5tHjVaPvosPR-3ROebUmL5G0C3unY89q0QgapSYtBh0_tfBS-G7z1urIhAdVBXjys_ku/s320/Summoned%20Skull.jpg" },
+        { nome: "Black Luster Soldier", atributo: "Earth", tipo: "Warrior", nivel: 8, atk: 3000, def: 2500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgCgEjkU2quY9nZ38nZVSiQvO_miSpm6xRYcE8V9HhNUCzS_hOUrIU9ThkdMnKSNkvayyNsRGKpOrOzOeW8zOdXDowmcOuW3_i1cvDZ_PSlNjwcoA83kgFFrqO6qoWJ_KVjXKc2hEwH8M_FSu43xg8-XuBedr76uoFAe10ua3tg5UMp0_L3TweLUCNb99rJ/s320/Black%20Luster%20Soldier.jpg" },
+        { nome: "Gaia The Fierce Knight", atributo: "Earth", tipo: "Warrior", nivel: 7, atk: 2300, def: 2100, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiTWiNy7AXbOaWbU_E3q3uXt-bNllI9MDBQLQMmWNhMKY8ugscm8knrD9NtKzsxREa7EgO_ikmk_IgS4OrzbNcQagInZj5YB9Iooa1DBoWln_cfVbgbz8iTCLEW09dXIbzeMc6Mc1AXkUAgg9jbYSIiXMS6S977sTC5Z48u_ibg1Uacy03NqEHdovvGlrGn/s320/Gaia%20The%20Fierce%20Knight.jpg" },
+        { nome: "Curse of Dragon", atributo: "Dark", tipo: "Dragon", nivel: 5, atk: 2000, def: 1500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi8YYtHTvyu1sK17xWJXTTq9TKER2JVkF1ta08Fxg7RKY7mvEeF2C_ZDs8dgTC17_NP9ydbQ7bqAX3RZeG5RtuiWQpeGWIlAlKv8j41ZnsVuqWymPZmjSOfsLzdnVXUckyL1oxKpxnAkeCZDq0fDkth5goICYlXHuWtsaqfrtgds1yp0LosESv8xEIlke-M/s320/Curse%20of%20Dragon.jpg" },
+        { nome: "Black Skull Dragon", atributo: "Dark", tipo: "Dragon", nivel: 9, atk: 3200, def: 2500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgjSn6Zi1MDuDxmjTou43ZE4homI_D9ZZEDpIhLX6YWfYKR7s1uTNQ8li2qn2NlkZby3rDzmMsoGBCB44x6wIZyp5-zbT2J_SstSxji4tY2wbX4ktemBSV5XtvTJ2oLRni5jwV-NW-fQk_jcKSwiOKuZQCj6-dfh1LlZZ-dkxvT8g_h0q1s3nV1FvpyRtWd/s320/Black%20Skull%20Dragon.jpg" },
+        { nome: "Thousand Dragon", atributo: "Wind", tipo: "Dragon", nivel: 6, atk: 2400, def: 2000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgVyYehL82jOQZGXOGIVwCG5f7ncZWFw3KYbI9jdpNqO1ErNx20FETeJNyws6Z7W6zFtm5WUIfYOl3aSZJSbpR6pnosGnKK-wHPt1PFJEAMSTCFi7d6LTWZ_an1s7fCWzQTqmSLIOentzbLY1CSF031eYe2Ghfn91EYtLx9ypiY_vhqRFNUzfySEt1xsQtb/s320/Thousand%20Dragon.jpg" },
+        { nome: "Time Wizard", atributo: "Light", tipo: "Spellcaster", nivel: 2, atk: 500, def: 400, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjdukzg60tdJul27y6MFOARPqlKJlEu9_E5maU4EAQSnycVjgE-GtK2TJUBi_RgH2H8381V5R2Do6hPfAh4du7Ey-9_urbcC9tqOp_S_hb6fLbyB8lsl3WCyWD5xwrM3_o4U31mXDri0j7dwm71Kpl1WM2RJ84-1lhUA_PPPlj5rX3fvm4U_OMYW59iCJBU/s320/Time%20Wizard.jpg" },
+        { nome: "Gearfried the Iron Knight", atributo: "Earth", tipo: "Warrior", nivel: 4, atk: 1800, def: 1600, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgTIpiLKhufwbXFQHe8yWscFPX9E0vPCMgVnmxHiQmEbW1x7VmkBwD9E4rSw03z1-6nn4ayHXrdenaEmgGi8Cs51amzZa_nRsSLJ_Cm1ZRev71xMskYVe3M29ql7fMo6dYQzppRKXs36ekMUu7cvxDcEmPf79cZ6G53-LqnLexLONm4GAwhkHBI2OCQHbi_/s320/Gearfried%20the%20Iron%20Knight.jpg" },
+        { nome: "Gearfried the Swordmaster", atributo: "Earth", tipo: "Warrior", nivel: 4, atk: 2600, def: 2200, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjXfTCe9urBc6f5le5GRLOTIVlbmRPZZTnvDstJmSB97InSDnPyHdmYU8vjkk0Li5EZu2TWE7DqismL78RT280U8BRA7pPRamvm7R2hBGt6IuvJhA_H2wSjcJ6xIzKnEJHnm7LTQKgLOIFibHSDomAyK0xcOMhmwb6sxTDzyrGB7kQLS2V_uoc0ot_FwDv8/s320/Gearfried%20the%20Swordmaster.jpg" },
+        { nome: "Cyber End Dragon", atributo: "Light", tipo: "Machine", nivel: 10, atk: 4000, def: 2800, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEh0OIFNkK8_b1Y-f57eCzFpwqRJqTGaSGRtN2z4ElwvnoJK2STBQ8uEdXi1rbIWtHnUTpnSS5jaWeFj1KfRpxhClaCPCYhdCGKEwra4TIC91mPeKMvltKjIKXn5lb1w0GrJBPAF1kP9VNOPliUCbZEzmUoltT_ZIIZuC0WQVzcvi2TWv2PrE4AdyRBblkuX/s320/Cyber%20End%20Dragon.jpg" },
+        { nome: "Cyber Twin Dragon", atributo: "Light", tipo: "Machine", nivel: 8, atk: 2800, def: 2100, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHAuAZZ6UArY6_CX6cKgJer_G44wnd_LM-f1ROOszonNFaGfhkJ6qB-xyIC7BUtYtlN-vgGwHPCHb3rKe_Z-SMDlmeVcuqr_KivBaD4x25t_K_5bjdd_0VQNQZzMsEQh5oCYDj7pAPpsP5fpaobJcHPpUlBRhtwjeSirdEra2kPJJluyCLeSQshpQoXNDo/s320/Cyber%20Twin%20Dragon.jpg" },
+        { nome: "Elemental HERO Neos", atributo: "Light", tipo: "Warrior", nivel: 7, atk: 2500, def: 2000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiSKlq3KdqT-OO-xbKZ8xMCXFfo0tz9ldKZx4hawKnGBeQeHay2oUMistepaDw6Fr-abaBDwp4E7rrAKNhalLMH2dqYlSO0fznoCtNDyrLjSAqD1dQkGBsu4yERh9AoOE5sr04dokZAJ8hOsY1eYMz6gBHz4MBckU6VQ9BTJbfPqV5uS69_qqYLmFhQfIjH/s320/Elemental%20HERO%20Neos.jpg" },
+        { nome: "Elemental HERO Flame Wingman", atributo: "Wind", tipo: "Warrior", nivel: 6, atk: 2100, def: 1200, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjLdkCONLFl83DPrfSlQ_wBq4bY5t9LVEkH5BXgOCW-keC83hqjqpl2cDM5CPtNdk_rZQCQKLiQe-lNsm_2ZwNH8Q1g4mN7Ytaf39UMyy6dAuuWOq_biKtbszhcZOoQ7-yae3oaLfL0DDSBV4aGGu309BkobeLglo-ZN_oOppRnvxmH9RGw3omjwhoq3w5z/s320/Elemental%20HERO%20Flame%20Wingman.jpg" },
+        { nome: "Elemental HERO Sparkman", atributo: "Light", tipo: "Warrior", nivel: 4, atk: 1600, def: 1400, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjH7LqAZoEU4E_1j2e_5pnASVHuAGmoor5NOtsahR8UGrIn1X6dSQW7oRXFgkN3r_6SBhfMclLtYNCtzZP8b_zzBBP8Pwh8aJEbasWHr2pW57m9n3XiGjiBXMU0SdJpitLokWpaZKUisn0tJm_EvunQOOJM4AsqSN0Souamd3EKiVgWiRTuMlVX8t1zl1da/s320/Elemental%20HERO%20Sparkman.jpg" },
+        { nome: "Elemental HERO Avian", atributo: "Wind", tipo: "Warrior", nivel: 3, atk: 1000, def: 1000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEha_XEIN7T9pH0bmbfnhsSS_6XFVh-9ZZWQ_LzpFffAcNlpN0lhzarzEBYKvJFnBBKeG6J6YQ529FiNe74RPbnfJ2u8v3v46d9oqMT8XjbBa3ZmFcD4k1xsRZL163cDADhev5bK0tpHzwR35WHQswFgWyezwvHJEBTids0oZoWYZHOQdA5lSrpRgnqOdkTS/s320/Elemental%20HERO%20Avian.jpg" },
+        { nome: "Elemental HERO Burstinatrix", atributo: "Fire", tipo: "Warrior", nivel: 3, atk: 1200, def: 800, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjCyoVn9rPvIRwaoZEudtSILbF1pYKUd4YJzfsuBO6wbj_dm6bRvl_E6BIZiLfm0-KDXFid-q6V499jWLTaErvH_5uzoNfv3Zc7-tZEJwTYiq22YaD4NBoN8droNiUCmRQLfwbqpczXyG_2q4Plg-xdmp0b6U2vbCyqpO39rcaaKhWRnCrjB36rVNUpkba5/s320/Elemental%20HERO%20Burstinatrix.jpg" },
+        { nome: "Elemental HERO Clayman", atributo: "Earth", tipo: "Warrior", nivel: 4, atk: 800, def: 2000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEh4CPfN_FW94FW45m80bqIR4MwCU3CM8Y-OByO-unlV2DX3z9ePRX215HfvkcSqxOOzCA1Bk1JUcMQi3CABUhKSLIWJFoJkhAkmeQRleMTz3f838ECJepNT6gKwOtV0Pc_9v4AKVp_jZ6dbKtnlSjU4oiVihOwmhP3BJVnV2vgfJ9Z3mupZSctsNbodm3P8/s320/Elemental%20HERO%20Clayman.jpg" },
+        { nome: "Destiny HERO - Plasma", atributo: "Dark", tipo: "Warrior", nivel: 8, atk: 1900, def: 600, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEijg0gWSPptw5LxvuRDNqzgRs6nPsrm-rb45QgREov-A4x2F24S-xNETBhMaKdhmS8Vpo6HJFwg3tLGotezXtKd1VURRh8dVwhoCmB7isFlNb5VQDqvaECkMsUezIx3OOJ4ihTbmAOvkeCH08686vxBzGfdhhA58atWisn0GGpnsGN10cKlTiQ19qiZd9bF/s320/Destiny%20HERO%20-%20Plasma.jpg" },
+        { nome: "Destiny HERO - Dreadmaster", atributo: "Dark", tipo: "Warrior", nivel: 8, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiGDs21AqQa-uEYALux-UsU9mnbYIK76jvpcdYdk56MjY_eO6UZoevv-qsSuZ2ZM_WuqnCTy68YDrcU90s2egkdx2fRXQ-Qq-TJ2lzHGM9zyns2oWDas8f1p_R2ntM6ED3cpmnQYToAfF0e8FVi-rvYdbT9RUf7XnPTKelrFllDNh7Csq-MXGlcEKtd948a/s320/Destiny%20HERO%20-%20Dreadmaster.jpg" },
+        { nome: "Ancient Gear Golem", atributo: "Earth", tipo: "Machine", nivel: 8, atk: 3000, def: 3000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgSHJIgDy46oxgWEhJS71NZ9W6hmnZQup0601ZCejlklPGI85HcPgHb1KmfLBnunLOtctNCHg5NocSmEPIS0Bnn7i8BOuIfdgshA1nVB4sQW5LwxYgvGQy7kUMt-gAFkVsfu4Ccp1xfmZHWFOJO3miI2vHlWOgSYi2cmIpldZOeJqGo2Xk-2R-8qcOB83e3/s320/Ancient%20Gear%20Golem.jpg" },
+        { nome: "Chimeratech Overdragon", atributo: "Dark", tipo: "Machine", nivel: 9, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjo2WNhrUOACEDe5uIfjq7zSG-GlNfUcTUr7Kw37RB3jsCD_zp4M2LfRLeAybzXLAps9i3XjIMI6fL6HXSgus2qJg0lgTH956xqMDT0PSPIwrd__Wzz0OL9zAGVmZgDKsTsQ0-GaA7TncI-mrmm5GnSDBT3YTfyLTcd_Iy0RBz86oeZCl4C7_2hXOAG9abW/s320/Chimeratech%20Overdragon.jpg" },
+        { nome: "Uria, Lord of Searing Flames", atributo: "Fire", tipo: "Pyro", nivel: 10, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhcGrmaxY_112YAgtxunYMDDWVfOIsgyS28GIwXrRaq5xJIlI1rqAcJOwdWNySxlsXJuCubElUUDmj7IOjIRlF_KXmknBK75QVPoE4HXyDlF4qtpKpDpAiuwFbUlyejb3CGj_SiIMMIigC1S5qA6SemmEpMpAbyyWao8h0Ke9FSLTYjLbEkKJ-JyOtqmvo0/s320/Uria,%20Lord%20of%20Searing%20Flames.jpg" },
+        { nome: "Hamon, Lord of Striking Thunder", atributo: "Light", tipo: "Thunder", nivel: 10, atk: 4000, def: 4000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhiLSUN1DsJOkDeP3eUiFRjymN87zRjcJIcAKX5KdZ-ki5TN8LhZWRmOdER7_5f3D6oiTwBuq2Ices5w43wn70OV9KU9lKADaF-DTb1hWFaJSMnPaWDmKOSLrZi43VjXX716okDiXc6xgOIUAVJEUxo9DwTElZZXM89P4aJziOZrXKaol7YxjL418ED4qRd/s320/Hamon,%20Lord%20of%20Striking%20Thunder.jpg" },
+        { nome: "Raviel, Lord of Phantasms", atributo: "Dark", tipo: "Fiend", nivel: 10, atk: 4000, def: 4000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiaz78iZ2sS2VWAdYnKzIvNWxtRK-U1aZ0f104zf2ZSygxOSXgimsk14NoTpuwA78PggZBO8v-vIc-OAKa8CXkysARLuGqIo0L6xv1OCBXxL81eaplcrr0s2R0si5ZsBAS2-ScZO9_CCMDRSoYGkxL0ZRXI7KcHghUFE4ef9az7QAaEGWr04M7IF-8S3CBN/s320/Raviel,%20Lord%20of%20Phantasms.jpg" },
+        { nome: "Yubel", atributo: "Dark", tipo: "Fiend", nivel: 10, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjboRhYTCnA1oRENQXn0cxAzoIDfJ8Du4IvAqELpSftQkBgGIhhWicQQSd6-ZK46sA3dpKbSri977Wzq9EfwqLsMT-ONUBT_OY4MHbGwsadDQtYRZAYrqp17-dG_Z5jvlUnqVxQT504BYP2dfT0Gc8gK_idNHeMspHz6NiBJfbr7PgzXt7gAvGVNdciPuoC/s320/Yubel.jpg" },
+        { nome: "Armityle the Phantom Phantasms", atributo: "Dark", tipo: "Fiend", nivel: 12, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiT0p0oNfpQJdFs86dIxgn67qPILPrIfgHPYTshFAGukGvl9o-a2IfR_90_h8T2ngrFpErvHoKlDyyELIA3CHX88ifLs0YxT8qcFp5xxRczy2FOLvssAxOYEQNsjbL9enKLbyMhHlCgBCYaeqaE4M-nTF2wj4gsZDr9IuFwELCERZjzsb7diOENVXmXdhoa/s320/Armityle%20the%20Chaos%20Phantasm.jpg" },
+        { nome: "Constellar Pleiades", atributo: "Light", tipo: "Warrior", nivel: 5, atk: 2500, def: 1500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjenDhahyphenhyphendHHYXODOH9DifERzju4Z0Yz_UHu79eYJdhYqW3E55lqNe6dEGku7603lceaK-0eeTvE8DT0MU4zG6Oi9Q5-zxblcYfQEjwQydpaNAF4wv3bIRB-WV0NxoW2j6M4VIedOBWKdzKgCf9OWBAeTVkrwWK4vBkHHhsxtkp-Q-59zLwoGAK0Frj0r8G/s320/Constellar%20Pleiades.jpg" },
+        { nome: "Adreus, Keeper of Armageddon", atributo: "Dark", tipo: "Fiend", nivel: 5, atk: 2600, def: 1700, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjDWm6kI8EEIgSau4nEtJIMw0-dHO2BK34dUM9XJPakbtf4K1MOFV5O3ybbXlTVgk6AMXj4Hscm9J14I2iTjKtDS1s-v5YYlmW1MpO7nX4gp-xmNKF_UISZPDIwDuysfmOtdZFHAPFBTos-sUQGu6PfxUi9RdNaPnaK5LdmECgCSWuaHmHSwK0APIMfLJ7O/s320/Adreus,%20Keeper%20of%20Armageddon.jpg" },
+        { nome: "Tiras, Keeper of Genesis", atributo: "Light", tipo: "Fairy", nivel: 5, atk: 2600, def: 1700, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhQk68zdssuYtlKMDKdkdixbEXkY4JiCq_mjho7sShk7ckj3-9a2bT6YrdCYvQu_yDnkDHVERbigmlYaO52guZ2a4CoJ53XVmYc1lm4X4oAjsO2Jvj7MrQuVz7jT0VArQCUoCrKkeUNlBZ6RiGnX_d5j3FuH-w2p6-Utk2bPf3_48emV-oqMcl3oLtU7KSh/s320/Tiras,%20Keeper%20of%20Genesis.jpg" },
+        { nome: "Abyss Dweller", atributo: "Water", tipo: "Sea Serpent", nivel: 4, atk: 1700, def: 1400, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhNIHMH3u-yZATJpmIqIQFPNUdno5YXrn4Oo7CwqmfNHlXdnHbWT8izVqp0qes2_NG0O5liXEdk7s4JdYRB0eB0bwdLa-0n_RzY-DqgzLEhPesQZodaBtjt07-d5t82UsH9dJaQ7Tca472_k62Dhfj5ncIcR-f8hXBPTpguHlpl9l3nLotLR9ZD_AbJxyd2/s320/Abyss%20Dweller.jpg" },
+        { nome: "Number 101: Silent Honor ARK", atributo: "Water", tipo: "Aqua", nivel: 4, atk: 2100, def: 1000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjYLWsXaIhYT9ON2_fG3JQZsX1B_oGsf-VFB8I8qtb0HawDWveO2yQ5sCYx-M_dRW4PqlKj7aApHFL-bMH3MFpbcEo80IqUA1X8dO6UKL4AwPade8fJjfk5arv_ARrEWJ7SpF12r4SFreSEu-JruP5fRL_YajW3qSMquFk-owttvLuvTKVAinKIy5T86b7c/s320/Number%20101%20Silent%20Honor%20ARK.jpg" },
+        { nome: "Gagaga Cowboy", atributo: "Earth", tipo: "Warrior", nivel: 4, atk: 1000, def: 1800, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiKKdtfB4bD3GbFNgrIlnH17ReZEgiJZ2L8Kyrm0k-SOWzKRIFN1I7-pzAH7MpaMfmOINSOy_dpGDqQFcHe-kM7aAQFRQeJ_7EDqIRRa0wQLVPlV1h1U6klqUPqGnN-9FSv6eU1nksKpzOcc1WVdvBPn6_6oCiTh69eLIgJdx9gGFHRG3Zf2e0RxJozlD5C/s320/Gagaga%20Cowboy.jpg" },
+        { nome: "Castel, the Skyblaster Musketeer", atributo: "Wind", tipo: "Winged Beast", nivel: 4, atk: 2000, def: 1500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgQmToOj5MnV0Qfu4RDUpNGos_5VIRWRRwfop9ZCM08_MPBAQVtHcEd9l4eLvsejdroEZEye66XBP5s4R_GKjCOrh_zQH8CfDJ_job-zOzSgT1xZ450IcOHaLWxuTfEs6894F2_sTtnRZEW1DRePfcpRdkucKwvc-reOnO6F38eI8ZMSnaroJz_uwWaH9MM/s320/Castel,%20the%20Skyblaster%20Musketeer.jpg" },
+        { nome: "Lavalval Chain", atributo: "Fire", tipo: "Sea Serpent", nivel: 4, atk: 1800, def: 1000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgWShAIuxFui9hqt8ycAkVhWpUvhRfE8o0OcxZbq6L2yhglMzwmL24Omjh7oJ33eT782ws6s2SMpzbq09cqBf1x4L_p-z-CR93NDOhzfpQKdlqgc9slxFYvbULOqm9VGvF2eakqpNARlVx4ODeGY0_JvJOZssqlf-HghgBeijG7rlheo6fFugSlYSMfoZmS/s320/Lavalval%20Chain.jpg" },
+        { nome: "Arcanite Magician", atributo: "Light", tipo: "Spellcaster", nivel: 7, atk: 2400, def: 2000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiJtLZ_-rhLfFr8JGQBN34VnDatg31b6xvbOvfeKZfipiscAG4v2_WxfbXlwMToclyNMvZJ8MyC7z7wRRyc0dNYrqVtZtc_njhC7OCpALE83HJw0Z36cSm-rNpqgM7J1o1pKla2x3vvWCGL00-cPQSnuRu0GYF-LOWH13JygOxQJSoM4XwUvDVQP-Jr_DZl/s320/Arcanite%20Magician.jpg" },
+        { nome: "Mist Wurm", atributo: "Wind", tipo: "Thunder", nivel: 9, atk: 2500, def: 1500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi7ndkSdvOWKPmYnbruI2tVVrJ-KU1qxMsx3a5qpY3JNz_Qibm7CDih4I16ExPh54u51XHc1_W5WG8AqtxcXU4m0zOJbjbzs7NLz5JoS_ljwoL7F9gzsbLM2JaJA4ShKNQoB8nA22a2NSsXrltI_gS2zJ3r3JSkxGe42YcDbsQ1Rmt7sAPIFq8Xw53-OKOM/s320/Mist%20Wurm.jpg" },
+        { nome: "Scrap Dragon", atributo: "Earth", tipo: "Dragon", nivel: 8, atk: 2800, def: 2000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgDddECC0PLcozxuXxIb3hnVfzpdB1r8HhXcnKXRUE2Ov_bxupel110TUvB43e7L3D36-rLiu8CY7QtwXvM-zzPO6ZTtn3XeaS894jSPFYhqjQJzCZpfw2YzCKpHGh22BSs7nwiov69Bu7ivbgZEvXcetZMXLuKW5xKFCowelVQpDBbWeiqZx_sxchcEThz/s320/Scrap%20Dragon.jpg" },
+        { nome: "Red Dragon Archfiend", atributo: "Dark", tipo: "Dragon", nivel: 8, atk: 3000, def: 2000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgyXtWiIxsGQk9N9AVQ4BAzpOFmPoJHZmlK90cKmZUuEE_5wraDlvwtfMRymGBPzSisFkI9g8D9xEDgpEEoz2MTtQNx_iApjCmdGRkaAvN_TLUuHum_mckTteRx6hdWBqbt94oQ97WdBcroBpzDT0rDEB0j6Za3oRhc6qVclLA-CoYy1n9eqYb9GsMTOnpr/s320/Red%20Dragon%20Archfiend.jpg" },
+        { nome: "Thought Ruler Archfiend", atributo: "Dark", tipo: "Psychic", nivel: 8, atk: 2700, def: 2300, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiyN8lt_1PttLzAodS2sb40CQAdcQKQlrj5GMk710xO288F2nZWbPv4ENNpmK7Ug7sMlnCO9uC_ufax6QUOZ__wgAaYZrBVwBEsCtchOJf94z3jkwpFhiD4u6YTNOPDLNDWJ6FOw0lyeqCF8kOybB-kdxDYtDtVxKu5st7HcH-mxx-OHyTOtrK70qZEKfGx/s320/Thought%20Ruler%20Archfiend.jpg" },
+        { nome: "Colossal Fighter", atributo: "Dark", tipo: "Warrior", nivel: 8, atk: 2800, def: 1000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgTLkqfxGwCEVL-_qAY-15Y82FKU9gEg4BhafaWCto5d3TsDBABgUf-0b5f8FwP2YH1epMHORAix6djlzkUEvh54XwrllqnlflL7JANymKRy_92j0Ujms889li_d9c3QOSrY2gHs7PEmUdx0CSuEmx7q6ir3eeUssJYuBJ6RQxOLQpOwqwb__n8js-6g7S2/s320/Colossal%20Fighter.jpg" },
+        { nome: "Goyo Guardian", atributo: "Earth", tipo: "Warrior", nivel: 6, atk: 2800, def: 2000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiYLA8AJvRNB6Unuvu4_kQc9GBmBQ6X4j83BkeBAi2yjz1IFu9CHYUrxPtRywi8PPdumL3CPEjMDdDdhunpqgme0NnRA0l59NGhgtpvqyh2ZxoCMtg5L6sLSJTZZ0OW1gZo5jOmEy_XBKWaTWIIS5eG1DbF3rQZWJ8-VMqS7qhl8HCy48HIUa1tO7Jemy7h/s320/Goyo%20Guardian.jpg" },
+        { nome: "Brionac, Dragon of the Ice Barrier", atributo: "Water", tipo: "Sea Serpent", nivel: 6, atk: 2300, def: 1400, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhayuQ0sMrkSjAGaZMUAUqLiIFFTvu0grIxmKcfybw1mVmx9SCvRRDMznVsc7s6-ne0ZrdsyMhLq4TW14nDIN3DgeA8gc3GB8_z3mCl-_ULl_1AX5ovQjhNoH5Odh8WuMIQIIICBrzAiL55jvg1Gnud7n9ADwjI8sJ9IpFpNJnJTJZdCAqc1ReACmgPJhn5/s320/Brionac,%20Dragon%20of%20the%20Ice%20Barrier.jpg" },
+        { nome: "Trishula, Dragon of the Ice Barrier", atributo: "Water", tipo: "Dragon", nivel: 9, atk: 2700, def: 2000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhNtxfCAjsdMCC6q2kjfP4T-gEDd98IvE0CAQ4QnEXwnAIOrNn8ngVdHHo_MroY-Q5yyxTjT0eg61ePJ-bP35lhMqA9ds-Bn9oEyLFo_x4UWWr0U9vkJTNtpUfCgJeU4j9lq_UhSa20Rwc7MZcN1xiVx5bm71vzT73Bhhvzj43KHTZRw0pWKvTVas5orEtf/s320/Trishula,%20Dragon%20of%20the%20Ice%20Barrier.jpg" },
+        { nome: "Chaos Sorcerer", atributo: "Dark", tipo: "Spellcaster", nivel: 6, atk: 2300, def: 2000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiEEHZcpYjk9J5pP0k-4c4PL2adKsNYZHfmKMvX3nI6ZFobD1DgKSos5pl22_PNgb6rS5tA4LXD6Zh6WHw_5UFw7mYKQd0FIV6Qu8-2GhQg9VQLpYYVY9IkgLoycaW7HLfZxzx8yJzqzmE8x_i8o4zpFL__7TgSzPJVodCrixaCUgGWvWsXrtPGZIuJHRYj/s320/Chaos%20Sorcerer.jpg" },
+        { nome: "Yata-Garasu", atributo: "Wind", tipo: "Fiend", nivel: 2, atk: 200, def: 100, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjLnjFiGTE4Aajtd1mxY5Al9ccrP2KwLkgTXBj3ZSaIczE6lqhtDpD0BdCnD4XoPHnJIVNx0eZ7p-UGMzWqCxXbd-kzMf79Z1LdP9mlNuk6ods6stod1DPPQMqSquWxQFKqCQA3CaH5WIuzFOA7DzpQxVOxNAOeDFtsvh9iCG1G2TsuC5tf_ioIu1DRYyIf/s320/Yata-Garasu.jpg" },
+        { nome: "Witch of the Black Forest", atributo: "Dark", tipo: "Spellcaster", nivel: 4, atk: 1100, def: 1200, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjpIUURseVGGgZ35qbTc-7rLjk3HpfLH7W8a4kKSL2aOffpT7Y5mWbSSLd-q_79QNE4CgvMQgN-8g24_eCYaj-tErNzyN6VG25n2Gc1MJPHt5JmGm27ilAgtfeuOHaT86cuU55ScT87vIegN3TU22wrjdN988pTVlC6JhMQFFV-zWDR-DV-WmpmG80J7h1T/s320/Witch%20of%20the%20Black%20Forest.jpg" },
+        { nome: "Sangan", atributo: "Dark", tipo: "Fiend", nivel: 3, atk: 1000, def: 600, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgsIVI1XpmnbkBGTrXvhdLGNKrEOOSO5hlhYabbuKliU_S2fzC-gg1tqvqPRVtOZQkIkP-ZICtWKP2ETkjd-L112ZzwFNuNAfj1RRBcMJ_7BYqTeIEvJOi4SpE_HK-ON_xxX_Gdm4kxKAu-wH-dWBxPV5xGRAeQyW1_TuTiabRbg4Pt15JATx5R06IiVRg5/s320/Sangan.jpg" },
+        { nome: "Morphing Jar", atributo: "Earth", tipo: "Rock", nivel: 2, atk: 700, def: 600, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEh8ZdMqGSzp1hRzmWPgJYfYso0VNZBuzanncDBoVlJbAJw2qPA2wY6ldGkQuVptnEGFGlQchQ1LAt0atey2r9gIYsBeC-7Ja4TcdWJ4t8lEZF7n8HnLh1hO421vG_85BqCdH6jvxCVvjZWm6CoLjvjFrDU0XDyW5_R8UUapCPdhpwVL0k9bswkZKTyWEeT0/s320/Morphing%20Jar.jpg" },
+        { nome: "Cyber Jar", atributo: "Dark", tipo: "Rock", nivel: 3, atk: 900, def: 900, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjnvHZW2WRJ0KL8DfIWln4DviEdL3YaJjKckqh-sg7MjXM6QEPMBtDWz1-7alic3qqTks0myBE3d0pF9Xbh-LhQMaMlgKTVlWns7DpctRRU_bHUIRlMNCbZ8svsVJdJYhC4HLw6CBwu9TFQaykvIG5RDOHAQiKWw2kMq4chlvl-C6tXN1AYzCzAoK3QaYSs/s320/Cyber%20Jar.jpg" },
+        { nome: "Breaker the Magical Warrior", atributo: "Dark", tipo: "Spellcaster", nivel: 4, atk: 1600, def: 1000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhGIHnrJYZt2Ky-lnQHqGeN6DYxKWm0y6suGnKsAYvNCTwxeEavdyXdAsqG2-uzYP7eC1RTJlY_3Wq5KhU-M3OIUH2VT3VTZtqGPXcn9l1agMb4ie5JFxLQcBHeygIY9C0Nwwu3CCOVz3OYP-1On2BFx-d2GYvmxQ6ipbBaeYufQ2tLYKUeiv1aXY-kDADt/s320/Breaker%20the%20Magical%20Warrior.jpg" },
+        { nome: "Card Trooper", atributo: "Earth", tipo: "Machine", nivel: 3, atk: 400, def: 400, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhXfm2XSBb6zzPL-e_LiGZGdEQIken1etJNSaWJKLZDfOKwx-0hYskFyzinNRl4UOH9zcIzwS4J9SvNYhsd2S5EB5CCcprKg2RnGwQQUN5dgxFOOqMSQP-af6XELR4MxQk-9dwsMgGS52sgQwzN0rpcgwlNPLKz76SWYMjjuEZ_iFy9EXmKXGYoouUg2w38/s320/Card%20Trooper.jpg" },
+        { nome: "Dandylion", atributo: "Earth", tipo: "Plant", nivel: 1, atk: 300, def: 300, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhAR4k25daIm1ulyt0P4XWomF4YuHnOjaog1Cmvweb-svPetC5rUb6CfVZwdHGqMNN6iM1lQGsAkzmFbb8n2dpY0jFZWNuZ1znxL8jd13J_kEeNoZDI4sFcz2aEbZHpLyWJpQ2Ln4YLdPvwRgwj4Ot_2htns1vK_GyBZHFXQrUhW5DFZTbk8L0hoG7R7lTN/s320/Dandylion.jpg" },
+        { nome: "Silent Swordsman LV5", atributo: "Light", tipo: "Warrior", nivel: 5, atk: 2300, def: 1000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjEu39Nd6QYFSIMK5djU4LOR8bL1oauIYovBrY0FK1EpEqHFriJxM8aujo0tV7MPo9pshRdNorlKSIZh5djwWmB0gxPUzeh9IsrjawU13m2YNtoJqmwsPFbITt9FSIplHRODtVnecKYWxm6WGl82xa392hoNieaqfiPjMqov64sk04lXZEAK8-Hxt-r3G1k/s320/Silent%20Swordsman%20LV5.jpg" },
+        { nome: "Armed Dragon LV7", atributo: "Wind", tipo: "Dragon", nivel: 7, atk: 2800, def: 1000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEigzqlYcoce2vcH4_6fJJ36OKeclG3nrFm6iUkNUYmzZ-jx8ynGR-NxIGr-ksz_JGopXMBFOnZMn13xZTkEIt3JYZeV5MHLh68cVYl1EdjPRnPDHX_xINCR5kkfl-Ngqy0zoXB37wRxTdkeWmKsLAV_wUwXUQ-YKedkTP71qYumWkL8QYT6Cv-u0qg3LT_K/s320/Armed%20Dragon%20LV7.jpg" },
+        { nome: "Mystic Swordsman LV4", atributo: "Earth", tipo: "Warrior", nivel: 4, atk: 1900, def: 1600, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj9bPhs6pTpQS1N_m-s5539a4jSakjTElFQgzIWB4kdCdGSfq00ne1LspABj73fi6qvoIl2OS7Mar5_pxH17Us6zKPl7CcgIq6OkERRCD3h0lVxs9TwSe93_EubK3ofNW-clXhpyX-sqwHNQbB94UmRoEoz1G8DuuiNEhKyldIHoKghim_M-o4AtaFse3Js/s320/Mystic%20Swordsman%20LV4.jpg" },
+        { nome: "Spirit Reaper", atributo: "Dark", tipo: "Zombie", nivel: 3, atk: 300, def: 200, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj8kvNgJSnQzmGnVpZW2ZIRUgNZEu6Q0W6po0s3o0VGZ-GvbjirPiP5FdFpKYH_xlzef81NrUIXs5eJJZWCjhU3xCwj8BnfOieQG3SIHUjW3FrDQGQOeHKHaGaYo1VcH-CHEmds2L8-o4_x6wSlbcEt3S3_4jfxaVuGbKWJLVcODoQgaC6iZQ7oDZLz5KJT/s320/Spirit%20Reaper.jpg" },
+        { nome: "Marshmallon", atributo: "Light", tipo: "Fairy", nivel: 3, atk: 300, def: 500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEh0Pf2z8Y1WShGdUYE15nZLIBblE1YBvIujfyG8gss92eY2OcHbHZEJaGv6quNAVy6IZtbbBMZiQmSTHeNIYoq8Gc_TTCRZixxqDT5wMGD8EcdBa-1RkkWYxFVQhbZCRqD9vx7-plpHuHNHCLF21rudADgxv2FON4n17lrcYRyOoAIyfkvTzh8SR4_tL0OB/s320/Marshmallon.jpg" },
+        { nome: "Ocean Dragon Lord - Neo-Daedalus", atributo: "Water", tipo: "Sea Serpent", nivel: 8, atk: 2900, def: 1600, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhcaAGyKhlV3giWYHM0wVNkjEukcYLH_V7eoVAI-AOcIDCHMPdRFJYl25HSNmTEUUeavKhqCTwQjTS8WMsbzapplf6e7NAOelRm417TkBaTNLWMoR9mzNp2m3Getxvd7XNBeOxxyDsvwUR1nX7gVG7F3fhGSD4h4rjRJNhWkbAHsi_uPnngm8Cx20Q7kEC9/s320/Ocean%20Dragon%20Lord%20-%20Neo-Daedalus.jpg" },
+        { nome: "Honest", atributo: "Light", tipo: "Fairy", nivel: 4, atk: 1100, def: 1900, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjkjo_DSJaT39ITs7slhP5FsR4zdc_fnaLFzLK05Fg0P0Mmj4UkH8Pzshues-bxVq46RxvQcXIygtp0JzlIFgtpY4aUoEtufqQzHHlMlJMk7MxpBpDVu8VU5qb9VwU9QpUf3J1Ped0HXl_V0BijgdQiLEk4mkODMjS5vtRCYjKsOuJeZLITqxUUPmYTJa88/s320/Honest.jpg" },
+        { nome: "Judgment Dragon", atributo: "Light", tipo: "Dragon", nivel: 8, atk: 3000, def: 2600, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhgQD0o8ClsUPkYlF4FMr5s6ZNxCWSCcxLKN6J8I13vj5QVrN2pkUIo4h9amis5Dj96z2iaZSzzGA12MmtIWrJbC9606FXvswjuNz02PafQOuVPZep5hgZshvJhLlzusnpgWDLp3wtVzrNkfA1dT54aYqCWJxcFZsS6fK8JU9Tb5QRHC6b05HD_LHAzpnfU/s320/Judgment%20Dragon.jpg" },
+        { nome: "Dark Armed Dragon", atributo: "Dark", tipo: "Dragon", nivel: 7, atk: 2800, def: 1000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiPhUldCKlAooEOrC3SiLnzQMYLNk7WSnuYBDg7Hdo6lWyDTqvQ6wsNOua2fygJtp8boYl2JW2FnocgGOJZpCxyiyoxQPIKn5w6RFB-3EDypFpU9o9vP1lWm4P4PEJARw1wSrIgIKZwi2IcTNior6gqGETmh8zOXMiNvF0-Fqqy6-wBSTByFOe7aQM38UrL/s320/Dark%20Armed%20Dragon.jpg" },
+        { nome: "Chaos Emperor Dragon - Envoy of the End", atributo: "Light", tipo: "Dragon", nivel: 8, atk: 3000, def: 2500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjMM2GmdK7S_YYvQ6qBdQ8PGEnprhbJINimLXTYeySApzpfGRIfHOWELsgYhK_KIuFZ6fwdryOhTyl-yW9zwhIYPfN1kf7nLZVHrUATdWjEcgwJsCkp_aaeVW3Sr4xkhp99n1_s1jYw5f7Wxz8HUDkXtGNW-ItFNoEcfAI4eBgFa5MhBZwvL1yoGTHfKoVT/s320/Chaos%20Emperor%20Dragon%20-%20Envoy%20of%20the%20End.jpg" },
+        { nome: "Red-Eyes Dark Dragoon", atributo: "Dark", tipo: "Spellcaster", nivel: 8, atk: 3000, def: 2500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhVSIqsvik1msb-epw9troKaHUQAlwi2akjRm-lacycxOp3pWGsZ0qtdWT-zvLQsyJuArfxQ6fOvrkjNFSIbpbOFFaKE0zx6PMPfJSrFd7G0EX4uKa9mmO5XfwbjgoLU4FqdaLs2GhQcxW1mpN2_X7F0I0cAF1xMw1X0ydqM32hDe_o1u0TEaGLyDDw4Yr2/s320/Red-Eyes%20Dark%20Dragoon.jpg" },
+        { nome: "Buster Blader", atributo: "Earth", tipo: "Warrior", nivel: 7, atk: 2600, def: 2300, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi-lcbEmkgqVyWXmSkmvFXVQmIHgyvsbV3eLmwgYDzDg72MW1pVWqiJjiY5J8zYASobBXJYUrn3Cq6ExJ6OUDsFBaZ8HKa_M2w7C654kdvlqv0DWgZxPaZab7zqKOXv324-CuavWojLO0j10-Xi5WRwzu7LqmSyipmpvueNXZUYzzVpdIjTN1BGdPKj9WIY/s320/Buster%20Blader.jpg" },
+        { nome: "Dark Magician Girl", atributo: "Dark", tipo: "Spellcaster", nivel: 6, atk: 2000, def: 1700, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhxaaXs7Y_J0rEBxfrQVw5uYWTnlhfq0Y4xtvRUrEOyaEZ3Ba7Tm1IeLEz4ovENyhj4J_RZlnsNYgmDOHwWgKQQgUEjEBTFc0lgcDTczPkjQSoExBekYjeCxV02ilTbxH1XCKcQU25ZAlrE7lO2nd9QqeIqbeycZPwzLTz56oZzwj37Ko7hU0TlVeuf0m_V/s320/Dark%20Magician%20Girl.jpg" }
+    ];
+
+    // Ordena alfabeticamente para o Datalist (será útil quando você der os nomes reais)
+    DB_CARTAS.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    // Variáveis de Estado
+    let cartaDoDia;
+    let tentativas = [];
+    const MAX_TENTATIVAS = 6;
+    let jogoFinalizado = false;
+
+    // --- 2. LÓGICA DE SEMENTE DIÁRIA E STREAK ---
+    function initJogo() {
+        preencherDatalist();
+        
+        const hoje = new Date();
+        const dataStr = hoje.getFullYear() + "-" + (hoje.getMonth() + 1) + "-" + hoje.getDate();
+        
+        const hash = hoje.getFullYear() * 10000 + (hoje.getMonth() + 1) * 100 + hoje.getDate();
+        const indiceDia = hash % DB_CARTAS.length;
+        cartaDoDia = DB_CARTAS[indiceDia];
+
+        carregarProgresso(dataStr);
+    }
+
+    function preencherDatalist() {
+        const datalist = document.getElementById('card-list');
+        DB_CARTAS.forEach(c => {
+            let option = document.createElement('option');
+            option.value = c.nome;
+            datalist.appendChild(option);
+        });
+    }
+
+    // --- 3. GERENCIAMENTO DE ESTADO (LOCAL STORAGE) ---
+    function carregarProgresso(dataHojeStr) {
+        let streak = parseInt(localStorage.getItem('yugirdle_streak')) || 0;
+        let lastPlay = localStorage.getItem('yugirdle_last_play') || "";
+        
+        const ontem = new Date();
+        ontem.setDate(ontem.getDate() - 1);
+        const dataOntemStr = ontem.getFullYear() + "-" + (ontem.getMonth() + 1) + "-" + ontem.getDate();
+
+        if(lastPlay !== dataHojeStr && lastPlay !== dataOntemStr && lastPlay !== "") {
+            streak = 0; 
+        }
+        document.getElementById('streak-count').innerText = streak;
+
+        const estadoSalvo = JSON.parse(localStorage.getItem('yugirdle_estado_' + dataHojeStr));
+        if (estadoSalvo) {
+            tentativas = estadoSalvo.tentativas;
+            jogoFinalizado = estadoSalvo.jogoFinalizado;
+            
+            tentativas.forEach(t => renderizarLinha(t));
+            document.getElementById('attempt-count').innerText = tentativas.length;
+
+            if (jogoFinalizado) mostrarModal(estadoSalvo.venceu);
+        }
+    }
+
+    function salvarProgresso(venceu) {
+        const hoje = new Date();
+        const dataStr = hoje.getFullYear() + "-" + (hoje.getMonth() + 1) + "-" + hoje.getDate();
+        
+        localStorage.setItem('yugirdle_estado_' + dataStr, JSON.stringify({
+            tentativas: tentativas,
+            jogoFinalizado: jogoFinalizado,
+            venceu: venceu
+        }));
+
+        if (jogoFinalizado) {
+            let lastPlay = localStorage.getItem('yugirdle_last_play');
+            if (lastPlay !== dataStr) {
+                let streak = parseInt(localStorage.getItem('yugirdle_streak')) || 0;
+                streak++;
+                localStorage.setItem('yugirdle_streak', streak);
+                localStorage.setItem('yugirdle_last_play', dataStr);
+                document.getElementById('streak-count').innerText = streak;
+            }
+        }
+    }
+
+    // --- 4. MOTOR DO JOGO ---
+    function fazerPalpite() {
+        if (jogoFinalizado) return;
+
+        const input = document.getElementById('guess-input');
+        const nomePalpite = input.value.trim();
+        const cartaEscolhida = DB_CARTAS.find(c => c.nome.toLowerCase() === nomePalpite.toLowerCase());
+
+        if (!cartaEscolhida) {
+            alert("Carta não encontrada! Escolha uma das opções da lista sugerida.");
+            return;
+        }
+
+        if (tentativas.length >= MAX_TENTATIVAS) return;
+
+        input.value = ""; 
+        tentativas.push(cartaEscolhida);
+        renderizarLinha(cartaEscolhida);
+        document.getElementById('attempt-count').innerText = tentativas.length;
+
+        verificarFimDeJogo(cartaEscolhida);
+    }
+
+    function renderizarLinha(palpite) {
+        const grid = document.getElementById('guesses-grid');
+        const linha = document.createElement('div');
+        linha.className = 'grid';
+
+        linha.appendChild(criarCelula(palpite.nome, palpite.nome === cartaDoDia.nome));
+        linha.appendChild(criarCelula(palpite.atributo, palpite.atributo === cartaDoDia.atributo));
+        linha.appendChild(criarCelula(palpite.tipo, palpite.tipo === cartaDoDia.tipo));
+        linha.appendChild(criarCelulaNumero(palpite.nivel, cartaDoDia.nivel));
+        linha.appendChild(criarCelulaNumero(palpite.atk, cartaDoDia.atk));
+        linha.appendChild(criarCelulaNumero(palpite.def, cartaDoDia.def));
+
+        grid.appendChild(linha);
+    }
+
+    function criarCelula(texto, estaCorreto) {
+        const div = document.createElement('div');
+        div.className = `cell ${estaCorreto ? 'correct' : 'wrong'}`;
+        div.innerText = texto;
+        return div;
+    }
+
+    function criarCelulaNumero(valorPalpite, valorAlvo) {
+        const div = document.createElement('div');
+        if (valorPalpite === valorAlvo) {
+            div.className = 'cell correct';
+            div.innerText = valorPalpite;
+        } else {
+            div.className = 'cell wrong';
+            const seta = valorPalpite < valorAlvo ? " ⬆️" : " ⬇️";
+            // A mudança foi feita na linha abaixo (innerHTML)
+            div.innerHTML = valorPalpite + seta;
+        }
+        return div;
+    }
+
+    function verificarFimDeJogo(palpite) {
+        let venceu = false;
+        
+        if (palpite.nome === cartaDoDia.nome) {
+            jogoFinalizado = true;
+            venceu = true;
+        } else if (tentativas.length >= MAX_TENTATIVAS) {
+            jogoFinalizado = true;
+            venceu = false;
+        }
+
+        if (jogoFinalizado) {
+            document.getElementById('guess-input').disabled = true;
+            document.getElementById('guess-btn').disabled = true;
+            salvarProgresso(venceu);
+            setTimeout(() => mostrarModal(venceu), 1000);
+        } else {
+            salvarProgresso(false); 
+        }
+    }
+
+    // --- 5. TELA FINAL E COMPARTILHAMENTO ---
+    function mostrarModal(venceu) {
+        const modal = document.getElementById('result-modal');
+        const title = document.getElementById('modal-title');
+        
+        title.innerText = venceu ? "VITÓRIA!" : "FIM DE JOGO!";
+        title.style.color = venceu ? "var(--green)" : "var(--red)";
+        
+        // Agora o script puxa a URL diretamente do seu banco Local do Blogger
+        document.getElementById('modal-image').src = cartaDoDia.url;
+        document.getElementById('modal-card-name').innerText = cartaDoDia.nome;
+        
+        modal.style.display = 'flex';
+    }
+
+    function copiarResultado() {
+        const streak = document.getElementById('streak-count').innerText;
+        
+        // Códigos Unicode para blindar os emojis contra o editor do Blogger
+        const fogo = '\uD83D\uDD25';
+        const verde = '\uD83D\uDFE9';
+        const vermelho = '\uD83D\uDFE5';
+        const cima = '\u2B06\uFE0F';
+        const baixo = '\u2B07\uFE0F';
+
+        let resultadoTxt = `Yugirdle Diário ${fogo} ${streak}\nTentativas: ${tentativas.length}/${MAX_TENTATIVAS}\n\n`;
+
+        tentativas.forEach(t => {
+            let linhaTxt = "";
+            linhaTxt += (t.nome === cartaDoDia.nome) ? `${verde} ` : `${vermelho} `;
+            linhaTxt += (t.atributo === cartaDoDia.atributo) ? `${verde} ` : `${vermelho} `;
+            linhaTxt += (t.tipo === cartaDoDia.tipo) ? `${verde} ` : `${vermelho} `;
+            
+            linhaTxt += (t.nivel === cartaDoDia.nivel) ? `${verde} ` : (t.nivel < cartaDoDia.nivel ? `${cima} ` : `${baixo} `);
+            linhaTxt += (t.atk === cartaDoDia.atk) ? `${verde} ` : (t.atk < cartaDoDia.atk ? `${cima} ` : `${baixo} `);
+            linhaTxt += (t.def === cartaDoDia.def) ? `${verde} ` : (t.def < cartaDoDia.def ? `${cima} ` : `${baixo} `);
+            
+            resultadoTxt += linhaTxt.trim() + "\n";
+        });
+
+        resultadoTxt += "\nJogue em: https://superygo.blogspot.com/p/yugirdle.html";
+
+        navigator.clipboard.writeText(resultadoTxt).then(() => {
+            const btn = document.getElementById('share-btn');
+            btn.innerText = "Copiado! Cole no seu WhatsApp";
+            btn.style.background = "#27ae60";
+        });
+    }
+
+    window.onload = initJogo;
+
+</script>
+</body>
+</html>
