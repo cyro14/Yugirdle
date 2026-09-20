@@ -1,4 +1,3 @@
-
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8"></meta>
@@ -23,8 +22,54 @@
         h1 { margin: 0; font-family: 'Teko', sans-serif; font-size: 36px; letter-spacing: 2px; color: var(--gold); }
         .streak-box { position: absolute; top: 20px; right: 20px; font-weight: bold; font-size: 18px; color: #ff9f43; display: flex; align-items: center; gap: 5px; }
 
+        /* ÁREA DA CARTA DINÂMICA */
+        .dynamic-card-container {
+            position: relative;
+            width: 220px;
+            height: 320px;
+            margin: 20px 0;
+            border-radius: 12px;
+            background: #000;
+            border: 2px solid #555;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; /* Garante que o zoom não vaze o container */
+        }
+        
+        .dynamic-card-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            /* Inicia com zoom de 1.7x focado na arte (esconde nome e efeito) */
+            transform: scale(1.7) translateY(-12%);
+            filter: brightness(0);
+            /* Transição suave para brilho, desfoque e zoom */
+            transition: all 0.8s ease-in-out;
+        }
+
+        .card-badge {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--gold);
+            color: var(--text-light);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
+            display: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        .badge-atributo { top: 10px; right: 10px; }
+        .badge-nivel { top: 40px; right: 10px; }
+        .badge-tipo { bottom: 45px; left: 10px; }
+        .badge-stats { bottom: 10px; right: 10px; font-size: 13px;}
+
         /* ÁREA DE INPUT */
-        .input-area { width: 100%; max-width: 600px; padding: 20px; box-sizing: border-box; display: flex; gap: 10px; }
+        .input-area { width: 100%; max-width: 600px; padding: 10px 20px; box-sizing: border-box; display: flex; gap: 10px; }
         input { flex-grow: 1; padding: 12px; border-radius: 5px; border: 1px solid #555; background: #222; color: #fff; font-size: 16px; font-weight: bold; }
         button { padding: 12px 20px; background: var(--gold); color: #000; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer; text-transform: uppercase; }
         button:hover { background: #d4af37; }
@@ -39,7 +84,7 @@
         .correct { background-color: var(--green); border-color: #27ae60; }
         .wrong { background-color: var(--red); border-color: #c0392b; }
 
-        /* MODAL DE RESULTADO (FIM DE JOGO) */
+        /* MODAL DE RESULTADO */
         #result-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); justify-content: center; align-items: center; z-index: 100; flex-direction: column; padding: 20px; box-sizing: border-box; }
         .modal-content { background: var(--panel-bg); padding: 30px; border-radius: 10px; border: 2px solid var(--gold); text-align: center; max-width: 400px; width: 100%; }
         .card-image { width: 100%; max-width: 250px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.8); margin: 15px 0; object-fit: contain; }
@@ -55,6 +100,15 @@
         <h1>YUGIRDLE</h1>
         <div class="streak-box">🔥 <span id="streak-count">0</span></div>
     </header>
+
+    <!-- ÁREA DA CARTA SENDO CONSTRUÍDA -->
+    <div class="dynamic-card-container">
+        <img id="silhouette-img" class="dynamic-card-image" src="" alt="Sombra da Carta Misteriosa" />
+        <div id="badge-atributo" class="card-badge badge-atributo">?</div>
+        <div id="badge-nivel" class="card-badge badge-nivel">⭐ ?</div>
+        <div id="badge-tipo" class="card-badge badge-tipo">[ ? ]</div>
+        <div id="badge-stats" class="card-badge badge-stats">ATK ? / DEF ?</div>
+    </div>
 
     <div class="input-area">
         <input autocomplete="off" id="guess-input" list="card-list" placeholder="Digite o nome da Carta..." type="text" />
@@ -85,7 +139,7 @@
     </div>
 
 <script>
-    // --- 1. BANCO DE DADOS (SEU REPOSITÓRIO DE IMAGENS) ---
+    // === COLOQUE O SEU BANCO DE DADOS COMPLETO AQUI EMBAIXO ===
     const DB_CARTAS = [
         { nome: "Ash Blossom & Joyous Springs", atributo: "Fire", tipo: "Zombie", nivel: 3, atk: 0, def: 1800, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhMB1y4y5iHs4vhhPFjjGJLyqvXeI-FA-P88CB9IkuyqpITTXi3N0SiqzlCW4XK4KDT2Agg17QJkorGP_UzltUIwcfGBcXBU6klP-IHSEmIcoU3SqMiE0bAZ1ENUrvAP4E1RsV9y8bmgPVkC-9MMIYeBD5Cel4NDsVmxaEV9k-KB533HG_DtwzqaSWyMyOj/s320/1000112550.jpg" },
         { nome: "Effect Veiler", atributo: "Light", tipo: "Spellcaster", nivel: 1, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjNNAe1l72eGBpTmPk79V84cg0q5nAovmLsnApwSSN3nx6ASJNl53LnweeKhxuuUzeR-NJIlm11vXNrFVwI2eOUrnYTOV1GtRFoXFOteupqgJe5MOI9sZphlvNCop_V9kCbbJ015GiXXSFQChxS_xAfbFsIYKonI837LI5Vvtn4RGah0weoMQmFauEvaGmB/s320/1000112553.jpg" },
@@ -173,7 +227,7 @@
         { nome: "Thousand-Eyes Restrict", atributo: "Dark", tipo: "Spellcaster", nivel: 1, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEi8IdRTmnx8GsaGo-doLAIXprCBiE7MlRL1Wpo2Jp12kL989mV20m19rL61It1HwQxKml8X8bj3M88fKWwR1Q2VXnfMRTIWTyIDF1heSwFlyVvplhFDNYb1Z1as8CGVOaIKLBsieGhURC-2iPCw-u-oETvJwgVuxfek_o00uiqIncSvQ7Sg_KtUYH8Qua1P" },
         { nome: "Sky Stricker Ace - Kagari", atributo: "Fire", tipo: "Machine", nivel: 1, atk: 1500, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEi5rAbVkg1Rq5Y6moerxIi__EvbqdxusplcjnGdgyy7BzI-fT3UGFiORtsKZJYJf0NluxFjASgj1Mkhp51FPdO3PshqTKZNR02bTXp2f6G6DXcHp3wtqRJYDF0JgAJJnuKmvRTDWFvdX2vV-XiR7aw22uSjqqXv5opWIGY3mTX4ylc-e3WS9KtYVx6UAwR1" },
         { nome: "Aluber the Jester of Despia", atributo: "Dark", tipo: "Fairy", nivel: 4, atk: 1800, def: 0, url: "https://blogger.googleusercontent.com/img/a/AVvXsEj-YBhvWzQL0Xch8rcCfJdfxYlYGkcCch1-np_euxNgS_0LsY9IwYBAw8hPlkdDejUMWGbOgzi5Is5Ft-mvJ2tNW296X-CFuAcHBhNqqCo2xqn78P7IXETSPQ4f7zhXGCd6xHAG57bxB_VpqWbk_BR2oSPh4uGOHObZ29llX0NmSA6ipsfh75VIH6rRRS6S" },
-      { nome: "Exodia the Forbidden One", atributo: "Dark", tipo: "Spellcaster", nivel: 3, atk: 1000, def: 1000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj7D1gKcV7XCa7Q6tw30Tx-X0NoIxihf4uRigFmWc35LPjT5_NwifkYPxtmzydsnWRASTVq9UgAq5gujL51f6pByAqSQMyoDm1Q0fZBPqvzOIwcmGlpBaD2dRldLYLA-RC9WTLqT7xrl8l75YWC7YphiF_k13zJ3tzdbVNz3zGzrJXdtEi4aQbW4WIYPpS5/s320/Exodia%20the%20Forbidden%20One.jpg" },
+        { nome: "Exodia the Forbidden One", atributo: "Dark", tipo: "Spellcaster", nivel: 3, atk: 1000, def: 1000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj7D1gKcV7XCa7Q6tw30Tx-X0NoIxihf4uRigFmWc35LPjT5_NwifkYPxtmzydsnWRASTVq9UgAq5gujL51f6pByAqSQMyoDm1Q0fZBPqvzOIwcmGlpBaD2dRldLYLA-RC9WTLqT7xrl8l75YWC7YphiF_k13zJ3tzdbVNz3zGzrJXdtEi4aQbW4WIYPpS5/s320/Exodia%20the%20Forbidden%20One.jpg" },
         { nome: "Slifer the Sky Dragon", atributo: "Divine", tipo: "Divine-Beast", nivel: 10, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgKEOAUXFoQYALItniWTu3ZXskv7PGymXqSqjyaJ_PchfNFuth-eciTUC2B3YnX2F81mPhgLh0XjMK-0q4xHeaOSJm6uKPyiy264fmfM2NXJYek0-LHlz2x0mLsbP-AYaBajxUVWUJT_geAqwLDEzMB70kOIBe2zeKBdvs3uj52PTo853DNPTC-1FTw6Co7/s320/Slifer%20the%20Sky%20Dragon.jpg" },
         { nome: "Obelisk the Tormentor", atributo: "Divine", tipo: "Divine-Beast", nivel: 10, atk: 4000, def: 4000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjqY2wqLhODp5x5ZwI3IIAyyXPbLvBIIuspr-ghPORq2GYUNvPKiJMfbB8xooCguJGA2N7UyLI1OQRhfEnyxPNnczj5bahUWZtYAwp7hGR-H-EZlLDNKEnw17MUeakVqlrRasyyH1Z68VbOouptRLJB4uEy0gmXe_Xznljg89XNdJHUCJ2qQj2EMmtD4whC/s320/Obelisk%20the%20Tormentor.jpg" },
         { nome: "The Winged Dragon of Ra", atributo: "Divine", tipo: "Divine-Beast", nivel: 10, atk: 0, def: 0, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhRrIKDYfHwUuc29pbsuW_0uGnWr6dOlxehrGVyftulpXKqOtKCgjxXVtc86qWmY1h0wXAKLYQCAORc93pXWVi5zrORDzoTGkVlTSFJC1lPmPLUA2r7dt06vG3oY3laRmEzdGTAkmdCT18TvdrYCsmd45LqmDr2MeuTz-Wb55VjmGRynk3UNUn4foLNsZq4/s320/The%20Winged%20Dragon%20of%20Ra.jpg" },
@@ -210,7 +264,7 @@
         { nome: "Tiras, Keeper of Genesis", atributo: "Light", tipo: "Fairy", nivel: 5, atk: 2600, def: 1700, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhQk68zdssuYtlKMDKdkdixbEXkY4JiCq_mjho7sShk7ckj3-9a2bT6YrdCYvQu_yDnkDHVERbigmlYaO52guZ2a4CoJ53XVmYc1lm4X4oAjsO2Jvj7MrQuVz7jT0VArQCUoCrKkeUNlBZ6RiGnX_d5j3FuH-w2p6-Utk2bPf3_48emV-oqMcl3oLtU7KSh/s320/Tiras,%20Keeper%20of%20Genesis.jpg" },
         { nome: "Abyss Dweller", atributo: "Water", tipo: "Sea Serpent", nivel: 4, atk: 1700, def: 1400, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhNIHMH3u-yZATJpmIqIQFPNUdno5YXrn4Oo7CwqmfNHlXdnHbWT8izVqp0qes2_NG0O5liXEdk7s4JdYRB0eB0bwdLa-0n_RzY-DqgzLEhPesQZodaBtjt07-d5t82UsH9dJaQ7Tca472_k62Dhfj5ncIcR-f8hXBPTpguHlpl9l3nLotLR9ZD_AbJxyd2/s320/Abyss%20Dweller.jpg" },
         { nome: "Number 101: Silent Honor ARK", atributo: "Water", tipo: "Aqua", nivel: 4, atk: 2100, def: 1000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjYLWsXaIhYT9ON2_fG3JQZsX1B_oGsf-VFB8I8qtb0HawDWveO2yQ5sCYx-M_dRW4PqlKj7aApHFL-bMH3MFpbcEo80IqUA1X8dO6UKL4AwPade8fJjfk5arv_ARrEWJ7SpF12r4SFreSEu-JruP5fRL_YajW3qSMquFk-owttvLuvTKVAinKIy5T86b7c/s320/Number%20101%20Silent%20Honor%20ARK.jpg" },
-        { nome: "Gagaga Cowboy", atributo: "Earth", tipo: "Warrior", nivel: 4, atk: 1000, def: 1800, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiKKdtfB4bD3GbFNgrIlnH17ReZEgiJZ2L8Kyrm0k-SOWzKRIFN1I7-pzAH7MpaMfmOINSOy_dpGDqQFcHe-kM7aAQFRQeJ_7EDqIRRa0wQLVPlV1h1U6klqUPqGnN-9FSv6eU1nksKpzOcc1WVdvBPn6_6oCiTh69eLIgJdx9gGFHRG3Zf2e0RxJozlD5C/s320/Gagaga%20Cowboy.jpg" },
+        { nome: "Gagaga Cowboy", atributo: "Earth", tipo: "Warrior", nivel: 4, atk: 1500, def: 2400, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiKKdtfB4bD3GbFNgrIlnH17ReZEgiJZ2L8Kyrm0k-SOWzKRIFN1I7-pzAH7MpaMfmOINSOy_dpGDqQFcHe-kM7aAQFRQeJ_7EDqIRRa0wQLVPlV1h1U6klqUPqGnN-9FSv6eU1nksKpzOcc1WVdvBPn6_6oCiTh69eLIgJdx9gGFHRG3Zf2e0RxJozlD5C/s320/Gagaga%20Cowboy.jpg" },
         { nome: "Castel, the Skyblaster Musketeer", atributo: "Wind", tipo: "Winged Beast", nivel: 4, atk: 2000, def: 1500, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgQmToOj5MnV0Qfu4RDUpNGos_5VIRWRRwfop9ZCM08_MPBAQVtHcEd9l4eLvsejdroEZEye66XBP5s4R_GKjCOrh_zQH8CfDJ_job-zOzSgT1xZ450IcOHaLWxuTfEs6894F2_sTtnRZEW1DRePfcpRdkucKwvc-reOnO6F38eI8ZMSnaroJz_uwWaH9MM/s320/Castel,%20the%20Skyblaster%20Musketeer.jpg" },
         { nome: "Lavalval Chain", atributo: "Fire", tipo: "Sea Serpent", nivel: 4, atk: 1800, def: 1000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgWShAIuxFui9hqt8ycAkVhWpUvhRfE8o0OcxZbq6L2yhglMzwmL24Omjh7oJ33eT782ws6s2SMpzbq09cqBf1x4L_p-z-CR93NDOhzfpQKdlqgc9slxFYvbULOqm9VGvF2eakqpNARlVx4ODeGY0_JvJOZssqlf-HghgBeijG7rlheo6fFugSlYSMfoZmS/s320/Lavalval%20Chain.jpg" },
         { nome: "Arcanite Magician", atributo: "Light", tipo: "Spellcaster", nivel: 7, atk: 2400, def: 2000, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiJtLZ_-rhLfFr8JGQBN34VnDatg31b6xvbOvfeKZfipiscAG4v2_WxfbXlwMToclyNMvZJ8MyC7z7wRRyc0dNYrqVtZtc_njhC7OCpALE83HJw0Z36cSm-rNpqgM7J1o1pKla2x3vvWCGL00-cPQSnuRu0GYF-LOWH13JygOxQJSoM4XwUvDVQP-Jr_DZl/s320/Arcanite%20Magician.jpg" },
@@ -246,7 +300,6 @@
         { nome: "Dark Magician Girl", atributo: "Dark", tipo: "Spellcaster", nivel: 6, atk: 2000, def: 1700, url: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhxaaXs7Y_J0rEBxfrQVw5uYWTnlhfq0Y4xtvRUrEOyaEZ3Ba7Tm1IeLEz4ovENyhj4J_RZlnsNYgmDOHwWgKQQgUEjEBTFc0lgcDTczPkjQSoExBekYjeCxV02ilTbxH1XCKcQU25ZAlrE7lO2nd9QqeIqbeycZPwzLTz56oZzwj37Ko7hU0TlVeuf0m_V/s320/Dark%20Magician%20Girl.jpg" }
     ];
 
-    // Ordena alfabeticamente para o Datalist (será útil quando você der os nomes reais)
     DB_CARTAS.sort((a, b) => a.nome.localeCompare(b.nome));
 
     // Variáveis de Estado
@@ -255,16 +308,17 @@
     const MAX_TENTATIVAS = 6;
     let jogoFinalizado = false;
 
-    // --- 2. LÓGICA DE SEMENTE DIÁRIA E STREAK ---
     function initJogo() {
         preencherDatalist();
         
         const hoje = new Date();
         const dataStr = hoje.getFullYear() + "-" + (hoje.getMonth() + 1) + "-" + hoje.getDate();
-        
         const hash = hoje.getFullYear() * 10000 + (hoje.getMonth() + 1) * 100 + hoje.getDate();
+        
         const indiceDia = hash % DB_CARTAS.length;
         cartaDoDia = DB_CARTAS[indiceDia];
+
+        document.getElementById('silhouette-img').src = cartaDoDia.url;
 
         carregarProgresso(dataStr);
     }
@@ -278,7 +332,68 @@
         });
     }
 
-    // --- 3. GERENCIAMENTO DE ESTADO (LOCAL STORAGE) ---
+    // --- LÓGICA ATUALIZADA DA CARTA DINÂMICA ---
+    function atualizarConstrucaoDaCarta() {
+        let acertos = { atributo: false, tipo: false, nivel: false, atk: false, def: false };
+        
+        tentativas.forEach(t => {
+            if (t.atributo === cartaDoDia.atributo) acertos.atributo = true;
+            if (t.tipo === cartaDoDia.tipo) acertos.tipo = true;
+            if (t.nivel === cartaDoDia.nivel) acertos.nivel = true;
+            if (t.atk === cartaDoDia.atk) acertos.atk = true;
+            if (t.def === cartaDoDia.def) acertos.def = true;
+        });
+
+        // O desfoque começa alto (15px) e cai a cada erro. O brilho sobe.
+        let blurAmount = jogoFinalizado ? 0 : Math.max(0, 15 - (tentativas.length * 2.5));
+        let nivelDeBrilho = jogoFinalizado ? 1 : Math.min(1, 0.15 + (tentativas.length * 0.15));
+        
+        const imgEl = document.getElementById('silhouette-img');
+
+        if (tentativas.length === 0 && !jogoFinalizado) {
+            imgEl.style.filter = `brightness(0)`;
+            imgEl.style.transform = `scale(1.7) translateY(-12%)`; 
+        } else {
+            // Aplica Brilho + Desfoque pesados pra esconder o texto
+            imgEl.style.filter = `brightness(${nivelDeBrilho}) blur(${blurAmount}px)`;
+            
+            if (jogoFinalizado) {
+                // Tira o zoom, mostrando a carta toda ao finalizar o jogo
+                imgEl.style.transform = `scale(1) translateY(0)`;
+                // Esconde as etiquetas pois a carta real já tem a informação
+                document.querySelectorAll('.card-badge').forEach(el => el.style.display = 'none');
+            } else {
+                imgEl.style.transform = `scale(1.7) translateY(-12%)`;
+            }
+        }
+
+        // Se o jogo não acabou, mostra os Badges das propriedades já acertadas
+        if (!jogoFinalizado) {
+            if (acertos.atributo) {
+                let el = document.getElementById('badge-atributo');
+                el.innerText = cartaDoDia.atributo;
+                el.style.display = 'block';
+            }
+            if (acertos.nivel) {
+                let el = document.getElementById('badge-nivel');
+                el.innerText = '⭐ ' + cartaDoDia.nivel;
+                el.style.display = 'block';
+            }
+            if (acertos.tipo) {
+                let el = document.getElementById('badge-tipo');
+                el.innerText = '[' + cartaDoDia.tipo + ']';
+                el.style.display = 'block';
+            }
+            if (acertos.atk || acertos.def) {
+                let el = document.getElementById('badge-stats');
+                let txtAtk = acertos.atk ? cartaDoDia.atk : '???';
+                let txtDef = acertos.def ? cartaDoDia.def : '???';
+                el.innerText = `ATK ${txtAtk} / DEF ${txtDef}`;
+                el.style.display = 'block';
+            }
+        }
+    }
+
     function carregarProgresso(dataHojeStr) {
         let streak = parseInt(localStorage.getItem('yugirdle_streak')) || 0;
         let lastPlay = localStorage.getItem('yugirdle_last_play') || "";
@@ -287,9 +402,7 @@
         ontem.setDate(ontem.getDate() - 1);
         const dataOntemStr = ontem.getFullYear() + "-" + (ontem.getMonth() + 1) + "-" + ontem.getDate();
 
-        if(lastPlay !== dataHojeStr && lastPlay !== dataOntemStr && lastPlay !== "") {
-            streak = 0; 
-        }
+        if(lastPlay !== dataHojeStr && lastPlay !== dataOntemStr && lastPlay !== "") streak = 0; 
         document.getElementById('streak-count').innerText = streak;
 
         const estadoSalvo = JSON.parse(localStorage.getItem('yugirdle_estado_' + dataHojeStr));
@@ -302,6 +415,8 @@
 
             if (jogoFinalizado) mostrarModal(estadoSalvo.venceu);
         }
+        
+        atualizarConstrucaoDaCarta();
     }
 
     function salvarProgresso(venceu) {
@@ -326,7 +441,6 @@
         }
     }
 
-    // --- 4. MOTOR DO JOGO ---
     function fazerPalpite() {
         if (jogoFinalizado) return;
 
@@ -347,6 +461,7 @@
         document.getElementById('attempt-count').innerText = tentativas.length;
 
         verificarFimDeJogo(cartaEscolhida);
+        atualizarConstrucaoDaCarta();
     }
 
     function renderizarLinha(palpite) {
@@ -379,7 +494,6 @@
         } else {
             div.className = 'cell wrong';
             const seta = valorPalpite < valorAlvo ? " ⬆️" : " ⬇️";
-            // A mudança foi feita na linha abaixo (innerHTML)
             div.innerHTML = valorPalpite + seta;
         }
         return div;
@@ -400,13 +514,12 @@
             document.getElementById('guess-input').disabled = true;
             document.getElementById('guess-btn').disabled = true;
             salvarProgresso(venceu);
-            setTimeout(() => mostrarModal(venceu), 1000);
+            setTimeout(() => mostrarModal(venceu), 2000); // Atraso maior para ver a carta deszoomando
         } else {
             salvarProgresso(false); 
         }
     }
 
-    // --- 5. TELA FINAL E COMPARTILHAMENTO ---
     function mostrarModal(venceu) {
         const modal = document.getElementById('result-modal');
         const title = document.getElementById('modal-title');
@@ -414,7 +527,6 @@
         title.innerText = venceu ? "VITÓRIA!" : "FIM DE JOGO!";
         title.style.color = venceu ? "var(--green)" : "var(--red)";
         
-        // Agora o script puxa a URL diretamente do seu banco Local do Blogger
         document.getElementById('modal-image').src = cartaDoDia.url;
         document.getElementById('modal-card-name').innerText = cartaDoDia.nome;
         
@@ -423,8 +535,6 @@
 
     function copiarResultado() {
         const streak = document.getElementById('streak-count').innerText;
-        
-        // Códigos Unicode para blindar os emojis contra o editor do Blogger
         const fogo = '\uD83D\uDD25';
         const verde = '\uD83D\uDFE9';
         const vermelho = '\uD83D\uDFE5';
@@ -438,11 +548,9 @@
             linhaTxt += (t.nome === cartaDoDia.nome) ? `${verde} ` : `${vermelho} `;
             linhaTxt += (t.atributo === cartaDoDia.atributo) ? `${verde} ` : `${vermelho} `;
             linhaTxt += (t.tipo === cartaDoDia.tipo) ? `${verde} ` : `${vermelho} `;
-            
             linhaTxt += (t.nivel === cartaDoDia.nivel) ? `${verde} ` : (t.nivel < cartaDoDia.nivel ? `${cima} ` : `${baixo} `);
             linhaTxt += (t.atk === cartaDoDia.atk) ? `${verde} ` : (t.atk < cartaDoDia.atk ? `${cima} ` : `${baixo} `);
             linhaTxt += (t.def === cartaDoDia.def) ? `${verde} ` : (t.def < cartaDoDia.def ? `${cima} ` : `${baixo} `);
-            
             resultadoTxt += linhaTxt.trim() + "\n";
         });
 
