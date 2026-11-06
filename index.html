@@ -2,42 +2,101 @@
 <head>
     <meta charset="UTF-8"></meta>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"></meta>
+    <meta content="Descubra a carta de Yu-Gi-Oh do dia, no estilo Wordle." name="description"></meta>
+    <meta content="#070b13" name="theme-color"></meta>
+    <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1322'/%3E%3Crect x='14' y='8' width='36' height='48' rx='6' fill='none' stroke='%23f0c75e' stroke-width='4'/%3E%3Ctext x='32' y='44' font-family='Arial' font-size='30' font-weight='bold' fill='%23f0c75e' text-anchor='middle'%3EY%3C/text%3E%3C/svg%3E" rel="icon"></link>
     <title>Yugirdle - O Desafio Diário</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Teko:wght@500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Teko:wght@500;600;700&display=swap');
 
         :root {
-            --bg-dark: #121212; --panel-bg: #1e1e1e;
-            --green: #2ecc71; --red: #e74c3c; --gold: #f1c40f;
-            --text-light: #ffffff; --border: #333;
+            --bg-0: #070b13;
+            --bg-1: #0d1322;
+            --panel: rgba(255, 255, 255, 0.035);
+            --panel-solid: #141b2d;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.15);
+            --gold: #f0c75e;
+            --gold-deep: #c99a2e;
+            --text: #eef1f7;
+            --muted: #93a0b8;
+            --green: #2fbe7e;
+            --green-bg: rgba(47, 190, 126, 0.15);
+            --red: #e05252;
+            --red-bg: rgba(224, 82, 82, 0.13);
         }
+
+        * { box-sizing: border-box; }
 
         body {
-            margin: 0; background-color: var(--bg-dark); color: var(--text-light);
-            font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; align-items: center;
+            margin: 0;
+            min-height: 100vh;
+            color: var(--text);
+            font-family: 'Inter', system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            display: flex; flex-direction: column; align-items: center;
+            background:
+                radial-gradient(900px 420px at 50% -80px, rgba(240, 199, 94, 0.09), transparent 65%),
+                radial-gradient(700px 520px at 88% 12%, rgba(64, 100, 255, 0.06), transparent 60%),
+                radial-gradient(700px 520px at 8% 32%, rgba(240, 199, 94, 0.045), transparent 60%),
+                var(--bg-0);
         }
 
-        /* HEADER & STREAK */
-        header { width: 100%; max-width: 800px; padding: 15px; text-align: center; border-bottom: 1px solid var(--border); position: relative; box-sizing: border-box; }
-        h1 { margin: 0; font-family: 'Teko', sans-serif; font-size: 36px; letter-spacing: 2px; color: var(--gold); }
-        .streak-box { position: absolute; top: 20px; right: 20px; font-weight: bold; font-size: 18px; color: #ff9f43; display: flex; align-items: center; gap: 5px; }
+        ::selection { background: rgba(240, 199, 94, 0.3); }
+        :focus-visible { outline: 2px solid rgba(240, 199, 94, 0.6); outline-offset: 2px; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2a3245; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3a445c; }
 
-        /* ÁREA DA CARTA DINÂMICA */
-        .dynamic-card-container {
+        /* ===== HEADER ===== */
+        header {
+            width: 100%; max-width: 880px;
+            padding: 16px 24px 14px;
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            border-bottom: 1px solid var(--border);
             position: relative;
-            width: 220px;
-            height: 320px;
-            margin: 20px 0;
-            border-radius: 12px;
-            background: #000;
-            border: 2px solid #555;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden; /* Garante que o zoom não vaze o container */
         }
-        
+        .brand { display: flex; flex-direction: column; gap: 1px; }
+        h1 {
+            margin: 0; font-family: 'Teko', sans-serif; font-weight: 700;
+            font-size: 40px; line-height: 0.9; letter-spacing: 3px;
+            background: linear-gradient(180deg, #fceeb9 0%, var(--gold) 48%, var(--gold-deep) 100%);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+            filter: drop-shadow(0 0 18px rgba(240, 199, 94, 0.25));
+        }
+        .brand small {
+            color: var(--muted); font-size: 10.5px; font-weight: 600;
+            letter-spacing: 3px; text-transform: uppercase;
+        }
+        .streak-box {
+            display: flex; align-items: center; gap: 7px;
+            padding: 8px 14px; border-radius: 999px;
+            background: linear-gradient(180deg, rgba(240, 199, 94, 0.13), rgba(240, 199, 94, 0.05));
+            border: 1px solid rgba(240, 199, 94, 0.3);
+            color: var(--gold); font-weight: 700; font-size: 16px;
+        }
+        .streak-box svg { width: 17px; height: 17px; flex-shrink: 0; }
+        .streak-box .label {
+            font-size: 9.5px; letter-spacing: 1.6px; text-transform: uppercase;
+            color: rgba(240, 199, 94, 0.75); font-weight: 700;
+        }
+
+        /* ===== CARTA MISTERIOSA ===== */
+        .card-stage { position: relative; padding: 26px 0 8px; animation: fadeUp 0.5s ease backwards; }
+        .card-stage::before {
+            content: ''; position: absolute; left: 50%; top: 50%;
+            width: 360px; height: 360px; transform: translate(-50%, -50%);
+            background: radial-gradient(closest-side, rgba(240, 199, 94, 0.14), transparent 72%);
+            pointer-events: none;
+        }
+        .dynamic-card-container {
+            position: relative; width: 236px; height: 344px;
+            border-radius: 14px; background: #05070d; overflow: hidden;
+            border: 1px solid rgba(240, 199, 94, 0.35);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65), 0 22px 50px rgba(0, 0, 0, 0.6), 0 0 36px rgba(240, 199, 94, 0.1);
+            display: flex; justify-content: center; align-items: center;
+        }
         .dynamic-card-image {
             width: 100%;
             height: 100%;
@@ -48,79 +107,275 @@
             /* Transição suave para brilho, desfoque e zoom */
             transition: all 0.8s ease-in-out;
         }
-
         .card-badge {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.85);
-            border: 1px solid var(--gold);
-            color: var(--text-light);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: bold;
-            text-shadow: 1px 1px 2px #000;
-            display: none;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            position: absolute; display: none; align-items: center; gap: 6px;
+            background: rgba(8, 11, 19, 0.88);
+            -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+            border: 1px solid var(--border-strong);
+            padding: 4px 10px; border-radius: 999px;
+            font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
             z-index: 10;
         }
-        .badge-atributo { top: 10px; right: 10px; }
-        .badge-nivel { top: 40px; right: 10px; }
-        .badge-tipo { bottom: 45px; left: 10px; }
-        .badge-stats { bottom: 10px; right: 10px; font-size: 13px;}
+        .card-badge svg { width: 13px; height: 13px; color: var(--gold); flex-shrink: 0; }
+        .attr-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+        .badge-atributo { top: 12px; right: 12px; }
+        .badge-nivel { top: 48px; right: 12px; }
+        .badge-tipo { bottom: 54px; left: 12px; }
+        .badge-stats { bottom: 14px; right: 12px; font-size: 11.5px; }
 
-        /* ÁREA DE INPUT */
-        .input-area { width: 100%; max-width: 600px; padding: 10px 20px; box-sizing: border-box; display: flex; gap: 10px; }
-        input { flex-grow: 1; padding: 12px; border-radius: 5px; border: 1px solid #555; background: #222; color: #fff; font-size: 16px; font-weight: bold; }
-        button { padding: 12px 20px; background: var(--gold); color: #000; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer; text-transform: uppercase; }
-        button:hover { background: #d4af37; }
-        button:disabled { background: #555; color: #888; cursor: not-allowed; }
+        /* ===== BUSCA ===== */
+        .input-area {
+            width: 100%; max-width: 660px;
+            padding: 16px 20px 4px;
+            display: flex; gap: 10px; align-items: stretch;
+        }
+        .search-wrap { position: relative; flex-grow: 1; }
+        .search-icon {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            width: 17px; height: 17px; color: var(--muted); pointer-events: none;
+        }
+        input {
+            width: 100%; padding: 13px 16px 13px 42px;
+            border-radius: 11px; border: 1px solid var(--border-strong);
+            background: rgba(255, 255, 255, 0.05); color: var(--text);
+            font-family: inherit; font-size: 15px; font-weight: 600;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+        input::placeholder { color: #5d6880; font-weight: 500; }
+        input:focus {
+            border-color: rgba(240, 199, 94, 0.55);
+            box-shadow: 0 0 0 3px rgba(240, 199, 94, 0.13);
+            background: rgba(255, 255, 255, 0.07);
+        }
+        input:disabled { opacity: 0.45; cursor: not-allowed; }
 
-        /* GRID DO JOGO */
-        .grid-container { width: 100%; max-width: 800px; padding: 10px; box-sizing: border-box; overflow-x: auto; }
-        .grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; gap: 5px; min-width: 600px; margin-bottom: 10px; }
-        .grid-header { font-size: 12px; color: #aaa; text-align: center; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 5px; }
-        .cell { background: var(--panel-bg); border: 2px solid var(--border); border-radius: 5px; padding: 10px 5px; text-align: center; font-weight: bold; display: flex; justify-content: center; align-items: center; font-size: 14px; min-height: 40px; }
-        
-        .correct { background-color: var(--green); border-color: #27ae60; }
-        .wrong { background-color: var(--red); border-color: #c0392b; }
+        button {
+            padding: 0 26px; border: none; border-radius: 11px; cursor: pointer;
+            font-family: inherit; font-size: 13.5px; font-weight: 800;
+            letter-spacing: 1.4px; text-transform: uppercase; color: #241a05;
+            background: linear-gradient(180deg, #f7d57c, var(--gold) 55%, #d9a83a);
+            box-shadow: 0 6px 18px rgba(240, 199, 94, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+            transition: filter 0.2s, transform 0.08s, background 0.2s, color 0.2s;
+        }
+        button:hover:not(:disabled) { filter: brightness(1.07); }
+        button:active:not(:disabled) { transform: translateY(1px); }
+        button:disabled { background: #222a3c; color: #5d6880; cursor: not-allowed; box-shadow: none; }
 
-        /* MODAL DE RESULTADO */
-        #result-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); justify-content: center; align-items: center; z-index: 100; flex-direction: column; padding: 20px; box-sizing: border-box; }
-        .modal-content { background: var(--panel-bg); padding: 30px; border-radius: 10px; border: 2px solid var(--gold); text-align: center; max-width: 400px; width: 100%; }
-        .card-image { width: 100%; max-width: 250px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.8); margin: 15px 0; object-fit: contain; }
-        #share-btn { background: #2980b9; color: #fff; width: 100%; margin-top: 15px; }
-        
-        ::-webkit-scrollbar { height: 8px; }
-        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        /* ===== AUTOCOMPLETE COM MINIATURAS ===== */
+        .autocomplete {
+            display: none; position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+            background: var(--panel-solid);
+            border: 1px solid var(--border-strong); border-radius: 12px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+            max-height: 338px; overflow-y: auto;
+            padding: 6px; z-index: 60;
+        }
+        .autocomplete.open { display: block; animation: acIn 0.14s ease; }
+        @keyframes acIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+        .ac-item {
+            display: flex; align-items: center; gap: 11px;
+            padding: 6px 9px; border-radius: 9px; cursor: pointer;
+            border-left: 2px solid transparent;
+        }
+        .ac-item:hover, .ac-item.active { background: rgba(240, 199, 94, 0.09); border-left-color: var(--gold); }
+        .ac-thumb {
+            width: 38px; height: 55px; object-fit: cover; border-radius: 5px;
+            border: 1px solid var(--border-strong); background: #0a0e17; flex-shrink: 0;
+        }
+        .ac-info { min-width: 0; }
+        .ac-name {
+            font-size: 13.5px; font-weight: 600;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ac-meta {
+            display: flex; align-items: center; gap: 6px;
+            margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--muted);
+        }
+        .ac-meta .attr-dot { width: 7px; height: 7px; }
+        .ac-empty { padding: 16px; text-align: center; color: var(--muted); font-size: 13px; }
+
+        /* ===== TENTATIVAS ===== */
+        .attempt-row {
+            display: flex; align-items: center; justify-content: center; gap: 14px;
+            padding: 12px 20px 2px;
+            color: var(--muted); font-size: 12.5px; font-weight: 600; letter-spacing: 0.5px;
+        }
+        .attempt-dots { display: flex; gap: 5px; }
+        .attempt-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+        .attempt-dot.used { background: var(--gold); box-shadow: 0 0 8px rgba(240, 199, 94, 0.55); }
+        .attempt-dot.current { background: rgba(255, 255, 255, 0.32); }
+
+        /* ===== GRID ===== */
+        .grid-container {
+            width: 100%; max-width: 880px;
+            padding: 12px 20px 26px; overflow-x: auto;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: minmax(160px, 2fr) repeat(5, minmax(74px, 1fr));
+            gap: 6px; min-width: 640px; margin-bottom: 6px;
+        }
+        .grid-header div {
+            font-size: 10.5px; color: var(--muted); font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.6px;
+            text-align: center; padding: 4px 0 8px;
+        }
+        .cell {
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: 9px; padding: 10px 8px; min-height: 46px;
+            display: flex; justify-content: center; align-items: center; gap: 4px;
+            font-size: 13.5px; font-weight: 600; line-height: 1.25; text-align: center;
+            font-variant-numeric: tabular-nums;
+            animation: cellIn 0.3s ease backwards;
+        }
+        .cell.correct { background: var(--green-bg); border-color: rgba(47, 190, 126, 0.45); color: #7ee2b8; }
+        .cell.wrong { background: var(--red-bg); border-color: rgba(224, 82, 82, 0.35); color: #f0a3a3; }
+        .cell .dir { display: inline-flex; }
+        .cell .dir svg { width: 14px; height: 14px; }
+
+        /* ===== MODAL DE RESULTADO ===== */
+        #result-modal {
+            display: none; position: fixed; inset: 0; z-index: 100;
+            background: rgba(4, 6, 11, 0.78);
+            -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+            justify-content: center; align-items: center;
+            padding: 20px;
+        }
+        #result-modal.open { display: flex; animation: fadeIn 0.22s ease; }
+        .modal-content {
+            background: linear-gradient(180deg, #182034, #101523);
+            border: 1px solid var(--border-strong); border-top: 3px solid var(--gold);
+            border-radius: 16px; padding: 26px 26px 22px;
+            max-width: 380px; width: 100%; max-height: 100vh; overflow-y: auto;
+            text-align: center;
+            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.7);
+            animation: modalIn 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+        }
+        .modal-badge {
+            width: 56px; height: 56px; margin: 0 auto 10px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .modal-badge svg { width: 26px; height: 26px; }
+        .modal-badge.win { background: rgba(47, 190, 126, 0.13); border: 1px solid rgba(47, 190, 126, 0.4); color: #5fe0a8; }
+        .modal-badge.lose { background: rgba(224, 82, 82, 0.12); border: 1px solid rgba(224, 82, 82, 0.4); color: #f08c8c; }
+        h2 { margin: 0; font-family: 'Teko', sans-serif; font-weight: 600; font-size: 34px; line-height: 1; letter-spacing: 1.5px; }
+        #modal-desc { margin: 6px 0 0; color: var(--muted); font-size: 13.5px; }
+        .card-frame {
+            width: min(236px, 74%); margin: 16px auto 4px;
+            border-radius: 12px; overflow: hidden; background: #05070d;
+            border: 1px solid rgba(240, 199, 94, 0.4);
+            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.6), 0 0 32px rgba(240, 199, 94, 0.12);
+        }
+        .card-image { display: block; width: 100%; }
+        #modal-card-name { margin: 10px 0 0; color: var(--gold); font-size: 16.5px; font-weight: 700; letter-spacing: 0.3px; }
+        .modal-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+        #share-btn {
+            width: 100%; padding: 13px; display: flex; align-items: center; justify-content: center; gap: 9px;
+            text-transform: none; letter-spacing: 0.4px; font-size: 13.5px;
+        }
+        #share-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+        #share-btn.copied {
+            background: linear-gradient(180deg, #4ade80, #22c55e);
+            color: #052e16; box-shadow: 0 6px 18px rgba(34, 197, 94, 0.2);
+        }
+        #close-btn {
+            background: transparent; border: 1px solid var(--border-strong);
+            color: var(--muted); font-size: 11.5px; padding: 10px; box-shadow: none;
+            letter-spacing: 1.2px;
+        }
+        #close-btn:hover:not(:disabled) { color: var(--text); border-color: rgba(255, 255, 255, 0.32); filter: none; }
+        .modal-note { margin: 14px 0 0; color: #5d6880; font-size: 11.5px; }
+
+        /* ===== TOAST ===== */
+        #toast {
+            position: fixed; bottom: 26px; left: 50%; z-index: 120;
+            transform: translate(-50%, 16px);
+            background: #1d2536; border: 1px solid rgba(224, 82, 82, 0.5);
+            color: #ffb7b7; padding: 11px 18px; border-radius: 10px;
+            font-size: 13.5px; font-weight: 600; text-align: center;
+            max-width: 90vw;
+            box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s, transform 0.25s;
+        }
+        #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+        footer { padding: 4px 20px 34px; color: #525c72; font-size: 11.5px; letter-spacing: 0.4px; text-align: center; }
+
+        /* ===== ANIMAÇÕES ===== */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalIn { from { opacity: 0; transform: translateY(20px) scale(0.96); } to { opacity: 1; transform: none; } }
+        @keyframes cellIn { from { opacity: 0; transform: translateY(6px) scale(0.97); } to { opacity: 1; transform: none; } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+        @media (max-width: 560px) {
+            h1 { font-size: 33px; }
+            .brand small { font-size: 9px; letter-spacing: 2.2px; }
+            header { padding: 12px 16px 10px; }
+            .input-area { flex-direction: column; }
+            button { padding: 13px; }
+            .card-stage { padding-top: 18px; }
+        }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>YUGIRDLE</h1>
-        <div class="streak-box">🔥 <span id="streak-count">0</span></div>
+        <div class="brand">
+            <h1>YUGIRDLE</h1>
+            <small>Desafio diário &middot; Yu-Gi-Oh!</small>
+        </div>
+        <div class="streak-box" title="Ofensiva de dias consecutivos">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>
+            <span id="streak-count">0</span>
+            <span class="label">ofensiva</span>
+        </div>
     </header>
 
     <!-- ÁREA DA CARTA SENDO CONSTRUÍDA -->
-    <div class="dynamic-card-container">
-        <img id="silhouette-img" class="dynamic-card-image" src="" alt="Sombra da Carta Misteriosa" />
-        <div id="badge-atributo" class="card-badge badge-atributo">?</div>
-        <div id="badge-nivel" class="card-badge badge-nivel">⭐ ?</div>
-        <div id="badge-tipo" class="card-badge badge-tipo">[ ? ]</div>
-        <div id="badge-stats" class="card-badge badge-stats">ATK ? / DEF ?</div>
+    <div class="card-stage">
+        <div class="dynamic-card-container">
+            <img id="silhouette-img" class="dynamic-card-image" src="" alt="Carta misteriosa do dia" />
+            <div id="badge-atributo" class="card-badge badge-atributo"><span class="attr-dot" id="badge-atributo-dot"></span><span id="badge-atributo-txt">?</span></div>
+            <div id="badge-nivel" class="card-badge badge-nivel">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                <span id="badge-nivel-txt">?</span>
+            </div>
+            <div id="badge-tipo" class="card-badge badge-tipo">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/></svg>
+                <span id="badge-tipo-txt">?</span>
+            </div>
+            <div id="badge-stats" class="card-badge badge-stats">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 10"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/></svg>
+                <span id="badge-stats-txt">ATK ? / DEF ?</span>
+            </div>
+        </div>
     </div>
 
+    <!-- BUSCA COM AUTOCOMPLETE -->
     <div class="input-area">
-        <input autocomplete="off" id="guess-input" list="card-list" placeholder="Digite o nome da Carta..." type="text" />
-        <datalist id="card-list"></datalist>
+        <div class="search-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input autocomplete="off" id="guess-input" placeholder="Digite o nome da carta..." type="text" />
+            <div class="autocomplete" id="autocomplete"></div>
+        </div>
         <button id="guess-btn" onclick="fazerPalpite()">Tentar</button>
     </div>
 
-    <p style="color: #aaaaaa; font-size: 14px; margin: 0; text-align: center;">Tentativas: <span id="attempt-count">0</span>/6</p>
+    <div class="attempt-row">
+        <span>Tentativas <span id="attempt-count">0</span>/6</span>
+        <div class="attempt-dots" id="attempt-dots"></div>
+    </div>
 
     <div class="grid-container">
         <div class="grid grid-header">
-            <div>CARTA</div><div>ATRIBUTO</div><div>TIPO</div><div>NÍVEL</div><div>ATK</div><div>DEF</div>
+            <div>Carta</div><div>Atributo</div><div>Tipo</div><div>Nível</div><div>ATK</div><div>DEF</div>
         </div>
         <div id="guesses-grid"></div>
     </div>
@@ -128,15 +383,27 @@
     <!-- MODAL DE FIM DE JOGO -->
     <div id="result-modal">
         <div class="modal-content">
-            <h2 id="modal-title" style="margin-top: 0;">FIM DE JOGO</h2>
+            <div class="modal-badge" id="modal-badge"></div>
+            <h2 id="modal-title">FIM DE JOGO</h2>
             <p id="modal-desc">A carta de hoje era:</p>
-            <img alt="Carta do Dia" class="card-image" id="modal-image" src="" />
-            <p id="modal-card-name" style="color: var(--gold); font-size: 20px; font-weight: bold;"></p>
-            <button id="share-btn" onclick="copiarResultado()">📋 Copiar Resultado para Whatsapp</button>
-            <p style="color: #aaaaaa; font-size: 12px; margin-top: 15px;">A próxima carta será liberada à meia-noite!</p>
-            <button onclick="document.getElementById('result-modal').style.display='none'" style="background: #444; color: white; font-size: 12px; margin-top: 10px; padding: 8px 15px;">Fechar</button>
+            <div class="card-frame">
+                <img alt="Carta do dia" class="card-image" id="modal-image" src="" onerror="imgFallback(this)" />
+            </div>
+            <p id="modal-card-name"></p>
+            <div class="modal-actions">
+                <button id="share-btn" onclick="copiarResultado()">
+                    <span id="share-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></span>
+                    <span id="share-btn-txt">Copiar resultado</span>
+                </button>
+                <button id="close-btn" onclick="fecharModal()">Fechar</button>
+            </div>
+            <p class="modal-note">A próxima carta será liberada à meia-noite!</p>
         </div>
     </div>
+
+    <div id="toast" role="alert"></div>
+
+    <footer>Adivinhe a carta do dia em até 6 tentativas &middot; Uma nova carta a cada meia-noite</footer>
 
 <script>
     // === COLOQUE O SEU BANCO DE DADOS COMPLETO AQUI EMBAIXO ===
@@ -309,7 +576,7 @@
     let jogoFinalizado = false;
 
     function initJogo() {
-        preencherDatalist();
+        initAutocomplete();
         
         const hoje = new Date();
         const dataStr = hoje.getFullYear() + "-" + (hoje.getMonth() + 1) + "-" + hoje.getDate();
@@ -323,13 +590,155 @@
         carregarProgresso(dataStr);
     }
 
-    function preencherDatalist() {
-        const datalist = document.getElementById('card-list');
-        DB_CARTAS.forEach(c => {
-            let option = document.createElement('option');
-            option.value = c.nome;
-            datalist.appendChild(option);
+    // === ÍCONES SVG REUTILIZÁVEIS (substituem os emojis da interface) ===
+    const ICONES = {
+        setaCima: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>',
+        setaBaixo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>',
+        trofeu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
+        derrota: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+        verificar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+    };
+
+    const CORES_ATRIBUTO = {
+        Dark: '#8b5cf6', Light: '#facc15', Earth: '#b45309', Fire: '#ef4444',
+        Water: '#3b82f6', Wind: '#10b981', Divine: '#f0c75e'
+    };
+
+    const IMG_PLACEHOLDER = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 146"><rect width="100" height="146" rx="8" fill="#141b2d"/><rect x="6" y="6" width="88" height="134" rx="6" fill="none" stroke="#f0c75e" stroke-width="3" opacity=".4"/><text x="50" y="92" font-family="Arial" font-size="44" font-weight="bold" fill="#f0c75e" text-anchor="middle" opacity=".6">?</text></svg>');
+
+    function imgFallback(img) {
+        img.onerror = null;
+        img.src = IMG_PLACEHOLDER;
+    }
+
+    // === AUTOCOMPLETE COM MINIATURA DA CARTA ===
+    const acEl = document.getElementById('autocomplete');
+    const inputEl = document.getElementById('guess-input');
+    let acLista = [];
+    let acAtivo = -1;
+    let acSuprimir = false;
+
+    function normalizarTexto(t) {
+        return t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function initAutocomplete() {
+        inputEl.addEventListener('input', aoDigitar);
+        inputEl.addEventListener('focus', aoDigitar);
+        inputEl.addEventListener('keydown', aoTeclar);
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-wrap')) fecharAutocomplete();
         });
+    }
+
+    function aoDigitar() {
+        if (acSuprimir) return;
+        const q = normalizarTexto(inputEl.value.trim());
+        if (!q) { fecharAutocomplete(); return; }
+
+        const comeca = [], contem = [];
+        DB_CARTAS.forEach(c => {
+            const n = normalizarTexto(c.nome);
+            if (n.startsWith(q)) comeca.push(c);
+            else if (n.includes(q)) contem.push(c);
+        });
+        acLista = comeca.concat(contem).slice(0, 30);
+
+        renderizarAutocomplete();
+    }
+
+    function renderizarAutocomplete() {
+        acAtivo = -1;
+        if (acLista.length === 0) {
+            acEl.innerHTML = '<div class="ac-empty">Nenhuma carta encontrada</div>';
+        } else {
+            acEl.innerHTML = acLista.map((c, i) => {
+                const cor = CORES_ATRIBUTO[c.atributo] || '#8b93a7';
+                return `
+                <div class="ac-item" data-i="${i}">
+                    <img class="ac-thumb" src="${c.url}" alt="" loading="lazy" decoding="async" onerror="imgFallback(this)">
+                    <div class="ac-info">
+                        <div class="ac-name">${c.nome}</div>
+                        <div class="ac-meta">
+                            <span class="attr-dot" style="background:${cor};box-shadow:0 0 7px ${cor}"></span>
+                            <span>${c.atributo} &middot; ${c.tipo} &middot; Nv ${c.nivel}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            acEl.querySelectorAll('.ac-item').forEach(el => {
+                el.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    selecionarAutocomplete(parseInt(el.dataset.i, 10));
+                });
+            });
+        }
+        acEl.classList.add('open');
+    }
+
+    function selecionarAutocomplete(i) {
+        if (i < 0 || i >= acLista.length) return;
+        inputEl.value = acLista[i].nome;
+        acSuprimir = true;
+        setTimeout(() => { acSuprimir = false; }, 150);
+        fecharAutocomplete();
+        inputEl.focus();
+    }
+
+    function fecharAutocomplete() {
+        acEl.classList.remove('open');
+        acAtivo = -1;
+    }
+
+    function atualizarItemAtivo() {
+        acEl.querySelectorAll('.ac-item').forEach((el, i) => {
+            el.classList.toggle('active', i === acAtivo);
+        });
+        const ativo = acEl.querySelector('.ac-item.active');
+        if (ativo) ativo.scrollIntoView({ block: 'nearest' });
+    }
+
+    function aoTeclar(e) {
+        const aberto = acEl.classList.contains('open');
+        if (e.key === 'ArrowDown' && aberto && acLista.length) {
+            e.preventDefault();
+            acAtivo = (acAtivo + 1) % acLista.length;
+            atualizarItemAtivo();
+        } else if (e.key === 'ArrowUp' && aberto && acLista.length) {
+            e.preventDefault();
+            acAtivo = (acAtivo - 1 + acLista.length) % acLista.length;
+            atualizarItemAtivo();
+        } else if (e.key === 'Enter') {
+            if (aberto && acAtivo >= 0) {
+                e.preventDefault();
+                selecionarAutocomplete(acAtivo);
+            } else {
+                fazerPalpite();
+            }
+        } else if (e.key === 'Escape') {
+            fecharAutocomplete();
+        }
+    }
+
+    // === TOAST (aviso elegante no lugar do alert) ===
+    let toastTimer;
+    function mostrarToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+    }
+
+    // === PONTOS DE TENTATIVAS ===
+    function atualizarDots() {
+        let html = '';
+        for (let i = 0; i < MAX_TENTATIVAS; i++) {
+            const usada = i < tentativas.length;
+            const atual = i === tentativas.length && !jogoFinalizado;
+            html += `<div class="attempt-dot${usada ? ' used' : ''}${atual ? ' current' : ''}"></div>`;
+        }
+        document.getElementById('attempt-dots').innerHTML = html;
     }
 
     // --- LÓGICA ATUALIZADA DA CARTA DINÂMICA ---
@@ -370,26 +779,26 @@
         // Se o jogo não acabou, mostra os Badges das propriedades já acertadas
         if (!jogoFinalizado) {
             if (acertos.atributo) {
-                let el = document.getElementById('badge-atributo');
-                el.innerText = cartaDoDia.atributo;
-                el.style.display = 'block';
+                const cor = CORES_ATRIBUTO[cartaDoDia.atributo] || '#8b93a7';
+                document.getElementById('badge-atributo-txt').innerText = cartaDoDia.atributo;
+                const dot = document.getElementById('badge-atributo-dot');
+                dot.style.background = cor;
+                dot.style.boxShadow = '0 0 7px ' + cor;
+                document.getElementById('badge-atributo').style.display = 'flex';
             }
             if (acertos.nivel) {
-                let el = document.getElementById('badge-nivel');
-                el.innerText = '⭐ ' + cartaDoDia.nivel;
-                el.style.display = 'block';
+                document.getElementById('badge-nivel-txt').innerText = cartaDoDia.nivel;
+                document.getElementById('badge-nivel').style.display = 'flex';
             }
             if (acertos.tipo) {
-                let el = document.getElementById('badge-tipo');
-                el.innerText = '[' + cartaDoDia.tipo + ']';
-                el.style.display = 'block';
+                document.getElementById('badge-tipo-txt').innerText = cartaDoDia.tipo;
+                document.getElementById('badge-tipo').style.display = 'flex';
             }
             if (acertos.atk || acertos.def) {
-                let el = document.getElementById('badge-stats');
-                let txtAtk = acertos.atk ? cartaDoDia.atk : '???';
-                let txtDef = acertos.def ? cartaDoDia.def : '???';
-                el.innerText = `ATK ${txtAtk} / DEF ${txtDef}`;
-                el.style.display = 'block';
+                let txtAtk = acertos.atk ? cartaDoDia.atk : '?';
+                let txtDef = acertos.def ? cartaDoDia.def : '?';
+                document.getElementById('badge-stats-txt').innerText = `ATK ${txtAtk} / DEF ${txtDef}`;
+                document.getElementById('badge-stats').style.display = 'flex';
             }
         }
     }
@@ -412,10 +821,12 @@
             
             tentativas.forEach(t => renderizarLinha(t));
             document.getElementById('attempt-count').innerText = tentativas.length;
+            atualizarDots();
 
             if (jogoFinalizado) mostrarModal(estadoSalvo.venceu);
         }
         
+        atualizarDots();
         atualizarConstrucaoDaCarta();
     }
 
@@ -449,16 +860,18 @@
         const cartaEscolhida = DB_CARTAS.find(c => c.nome.toLowerCase() === nomePalpite.toLowerCase());
 
         if (!cartaEscolhida) {
-            alert("Carta não encontrada! Escolha uma das opções da lista sugerida.");
+            mostrarToast("Carta não encontrada. Escolha uma opção da lista!");
             return;
         }
 
         if (tentativas.length >= MAX_TENTATIVAS) return;
 
-        input.value = ""; 
+        input.value = "";
+        fecharAutocomplete();
         tentativas.push(cartaEscolhida);
         renderizarLinha(cartaEscolhida);
         document.getElementById('attempt-count').innerText = tentativas.length;
+        atualizarDots();
 
         verificarFimDeJogo(cartaEscolhida);
         atualizarConstrucaoDaCarta();
@@ -493,8 +906,12 @@
             div.innerText = valorPalpite;
         } else {
             div.className = 'cell wrong';
-            const seta = valorPalpite < valorAlvo ? " ⬆️" : " ⬇️";
-            div.innerHTML = valorPalpite + seta;
+            const dir = document.createElement('span');
+            dir.className = 'dir';
+            dir.title = valorPalpite < valorAlvo ? 'O valor correto é maior' : 'O valor correto é menor';
+            dir.innerHTML = valorPalpite < valorAlvo ? ICONES.setaCima : ICONES.setaBaixo;
+            div.appendChild(document.createTextNode(valorPalpite));
+            div.appendChild(dir);
         }
         return div;
     }
@@ -524,23 +941,30 @@
         const modal = document.getElementById('result-modal');
         const title = document.getElementById('modal-title');
         const desc = document.getElementById('modal-desc');
-        
+        const badge = document.getElementById('modal-badge');
+
         if (venceu) {
-            title.innerText = "✨ PARABÉNS! ✨";
+            badge.className = 'modal-badge win';
+            badge.innerHTML = ICONES.trofeu;
+            title.innerText = "Parabéns, Duelista!";
             title.style.color = "var(--green)";
-            title.style.fontSize = "32px";
-            desc.innerHTML = "<strong style='color: var(--gold); font-size: 16px;'>Você é um verdadeiro duelista!</strong><br><br>A carta de hoje era:";
+            desc.innerHTML = "<strong style='color: var(--gold);'>Você é um verdadeiro duelista!</strong><br>A carta de hoje era:";
         } else {
-            title.innerText = "FIM DE JOGO!";
+            badge.className = 'modal-badge lose';
+            badge.innerHTML = ICONES.derrota;
+            title.innerText = "Fim de Jogo";
             title.style.color = "var(--red)";
-            title.style.fontSize = "28px";
-            desc.innerText = "A carta de hoje era:";
+            desc.innerText = "Suas tentativas acabaram. A carta de hoje era:";
         }
         
         document.getElementById('modal-image').src = cartaDoDia.url;
         document.getElementById('modal-card-name').innerText = cartaDoDia.nome;
         
-        modal.style.display = 'flex';
+        modal.classList.add('open');
+    }
+
+    function fecharModal() {
+        document.getElementById('result-modal').classList.remove('open');
     }
 
     function copiarResultado() {
@@ -567,9 +991,9 @@
         resultadoTxt += "\nJogue em: https://superygo.blogspot.com/p/yugirdle.html";
 
         navigator.clipboard.writeText(resultadoTxt).then(() => {
-            const btn = document.getElementById('share-btn');
-            btn.innerText = "Copiado! Cole no seu WhatsApp";
-            btn.style.background = "#27ae60";
+            document.getElementById('share-btn-icon').innerHTML = ICONES.verificar;
+            document.getElementById('share-btn-txt').innerText = "Copiado! Cole no seu WhatsApp";
+            document.getElementById('share-btn').classList.add('copied');
         });
     }
 
