@@ -81,6 +81,19 @@
             font-size: 9.5px; letter-spacing: 1.6px; text-transform: uppercase;
             color: rgba(240, 199, 94, 0.75); font-weight: 700;
         }
+        .header-right { display: flex; align-items: center; gap: 10px; }
+        .icon-btn {
+            width: 42px; height: 42px; padding: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-strong);
+            border-radius: 999px; color: var(--muted);
+            box-shadow: none; letter-spacing: 0; text-transform: none; font-size: 0;
+            transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.1s;
+        }
+        .icon-btn svg { width: 18px; height: 18px; display: block; }
+        .icon-btn:hover:not(:disabled) { color: var(--gold); border-color: rgba(240, 199, 94, 0.5); background: rgba(240, 199, 94, 0.08); filter: none; }
+        .icon-btn:active:not(:disabled) { transform: scale(0.92); }
 
         /* ===== CARTA MISTERIOSA ===== */
         .card-stage { position: relative; padding: 26px 0 8px; animation: fadeUp 0.5s ease backwards; }
@@ -96,6 +109,7 @@
             border: 1px solid rgba(240, 199, 94, 0.35);
             box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65), 0 22px 50px rgba(0, 0, 0, 0.6), 0 0 36px rgba(240, 199, 94, 0.1);
             display: flex; justify-content: center; align-items: center;
+            transition: width 0.45s ease, height 0.45s ease;
         }
         .dynamic-card-image {
             width: 100%;
@@ -308,6 +322,12 @@
 
         footer { padding: 4px 20px 34px; color: #525c72; font-size: 11.5px; letter-spacing: 0.4px; text-align: center; }
 
+        /* ===== TELA CHEIA ===== */
+        body.fullscreen h1 { font-size: 52px; }
+        body.fullscreen .dynamic-card-container { width: 300px; height: 438px; }
+        body.fullscreen .input-area { max-width: 780px; }
+        body.fullscreen .grid-container { max-width: 1020px; }
+
         /* ===== ANIMAÇÕES ===== */
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes modalIn { from { opacity: 0; transform: translateY(20px) scale(0.96); } to { opacity: 1; transform: none; } }
@@ -331,10 +351,15 @@
             <h1>YUGIRDLE</h1>
             <small>Desafio diário &middot; Yu-Gi-Oh!</small>
         </div>
-        <div class="streak-box" title="Ofensiva de dias consecutivos">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>
-            <span id="streak-count">0</span>
-            <span class="label">ofensiva</span>
+        <div class="header-right">
+            <button id="fullscreen-btn" class="icon-btn" title="Tela cheia (F)" aria-label="Alternar tela cheia">
+                <span id="fs-icon"></span>
+            </button>
+            <div class="streak-box" title="Ofensiva de dias consecutivos">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>
+                <span id="streak-count">0</span>
+                <span class="label">ofensiva</span>
+            </div>
         </div>
     </header>
 
@@ -596,7 +621,9 @@
         setaBaixo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>',
         trofeu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
         derrota: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
-        verificar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+        verificar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+        telaCheia: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>',
+        telaJanela: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>'
     };
 
     const CORES_ATRIBUTO = {
@@ -740,6 +767,54 @@
         }
         document.getElementById('attempt-dots').innerHTML = html;
     }
+
+    // === TELA CHEIA ===
+    const fsBtn = document.getElementById('fullscreen-btn');
+    const fsIcon = document.getElementById('fs-icon');
+
+    function estaEmTelaCheia() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
+    function alternarTelaCheia() {
+        const docEl = document.documentElement;
+        try {
+            if (!estaEmTelaCheia()) {
+                const pedir = docEl.requestFullscreen || docEl.webkitRequestFullscreen;
+                if (!pedir) {
+                    mostrarToast("Seu navegador não suporta tela cheia.");
+                    return;
+                }
+                const pedido = pedir.call(docEl);
+                if (pedido && pedido.catch) {
+                    pedido.catch(() => mostrarToast("Tela cheia bloqueada pelo navegador/site."));
+                }
+            } else {
+                const sair = document.exitFullscreen || document.webkitExitFullscreen;
+                if (sair) sair.call(document);
+            }
+        } catch (err) {
+            mostrarToast("Tela cheia bloqueada pelo navegador/site.");
+        }
+    }
+
+    function atualizarIconeTelaCheia() {
+        const cheio = estaEmTelaCheia();
+        fsIcon.innerHTML = cheio ? ICONES.telaJanela : ICONES.telaCheia;
+        fsBtn.title = cheio ? "Sair da tela cheia (F)" : "Tela cheia (F)";
+        document.body.classList.toggle('fullscreen', cheio);
+    }
+
+    fsBtn.addEventListener('click', alternarTelaCheia);
+    ['fullscreenchange', 'webkitfullscreenchange'].forEach(ev => document.addEventListener(ev, atualizarIconeTelaCheia));
+    document.addEventListener('keydown', (e) => {
+        if (!e.key || e.key.toLowerCase() !== 'f' || e.ctrlKey || e.metaKey || e.altKey) return;
+        const tag = (e.target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+        e.preventDefault();
+        alternarTelaCheia();
+    });
+    atualizarIconeTelaCheia();
 
     // --- LÓGICA ATUALIZADA DA CARTA DINÂMICA ---
     function atualizarConstrucaoDaCarta() {
